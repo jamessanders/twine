@@ -1,28 +1,80 @@
+{-# LANGUAGE ExistentialQuantification, TypeSynonymInstances, FlexibleInstances, OverlappingInstances  #-}
 import Control.Monad
 import Control.Monad.State
 import Data.Maybe
 import Data.Char 
 import Data.List
 
+data ContextItem = ContextPairs [(String,ContextItem)]
+                 | ContextValue String
+                 | ContextList [ContextItem]
+                   deriving (Show)
 
-data ContextItem = CV String 
-                 | CL [[(String,ContextItem)]] 
-                 | CI ContextItem deriving Show
+data CX = forall a. (ToContext a) => CX a
 
 data ParserState = PS { getDisplay  :: String
                       , getTemplate :: String
-                      , getContext  :: [(String,ContextItem)] } 
-                   deriving (Show)
+                      , getContext  :: ContextItem } 
 
-showTmp (CV x) = x
-showTmp (CL x) = show x
-showTmp (CI x) = showTmp x
 
-toCX (CV _) = error "not a context"
-toCX (CI x) = toCX x 
-toCX (CL x) = x
+class ToContext a where
+    toContext :: a -> ContextItem
 
-addPrefix pf x = map (\(a,b) -> (pf ++ "." ++ a,b)) x
+instance ToContext CX where
+    toContext (CX a) = toContext a
+
+instance ToContext [CX] where
+    toContext = ContextList . map toContext
+
+instance ToContext a => ToContext [a] where
+    toContext x = ContextList $ map toContext x
+
+instance ToContext a => ToContext [(String,a)] where
+    toContext x = ContextPairs $ map (\(a,b) -> (a,toContext b)) x
+
+instance ToContext a => ToContext (String,a) where
+    toContext x = ContextPairs $ [(\(a,b) -> (a,toContext b)) x]
+
+instance ToContext String where
+    toContext a = ContextValue a
+
+
+-- instance ToContext ([Char], [[([Char], [Char])]]) where
+--     toContext (x1,x2) = ContextPairs [(x1,ContextList $ map toContext x2)]
+
+
+mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
+cxpLookup k (ContextPairs a) = lookup k a
+
+test = [("fname","James")
+       ,("lname","Sanders")
+       ,("city","Chattanooga")
+       ,("state","Tennessee")]
+
+data Pet = Pet {petName :: String, petType :: String}
+
+instance ToContext Pet where
+    toContext x = ContextPairs [("name",ContextValue $ petName x)
+                               ,("type",ContextValue $ petType x)]
+
+pets = toContext $ ("pets",[Pet "Samson" "Dog"
+                           ,Pet "Kiwi"   "Bird"
+                           ,Pet "Simon"  "Cat"])
+
+showTmp (ContextValue x) = x
+showTmp (ContextList  x) = show x
+showTmp (ContextPairs x) = show x
+
+toCX (ContextValue _) = error "not a context"
+toCX (ContextPairs x) = x
+toCX (ContextList  x) = toCX (head x)
+
+addPrefix pf (ContextPairs x) = ContextPairs $ map (\(a,b) -> (pf ++ "." ++ a,b)) x
+addPrefix pf (ContextValue x) = ContextPairs [(pf,ContextValue x)]
+
+mapCL f (ContextList x)  = map f x
+mapCL f a@(ContextValue x) = [f a]
+mapCL f _ = error "not a list of key/value pairs"
 
 makePS = PS "" 
 
@@ -65,7 +117,7 @@ stepParser = do c <- getChar
                           dropC 
                           dropC 
                           cx <- fmap getContext get
-                          toDisplay $ showTmp $ fromMaybe (CV "") (lookup find cx)
+                          toDisplay $ showTmp $ fromMaybe (ContextValue "") (cxpLookup find $ cx)
                           stepParser
 
           loopParser = do tx <- fmap getTemplate get
@@ -73,8 +125,8 @@ stepParser = do c <- getChar
                           let v  = strip $ takeWhile (/= '|') tx
                           let ei = findClosing "{|" "|}" tx
                           let tmp = take (ei - 1) tx
-                          let d = map (parseTemplate (tail $ dropWhile (/= '|') tmp) . (cx ++) . addPrefix v) 
-                                  $ toCX $ fromMaybe (CL []) $ lookup v cx
+                          let d = mapCL (parseTemplate (tail $ dropWhile (/= '|') tmp) . (mergeCXP cx) . addPrefix v) 
+                                  $ fromMaybe (ContextList []) $ cxpLookup v cx
                           dropN (ei + 1)
                           toDisplay $ concat d
                           stepParser
@@ -82,7 +134,7 @@ stepParser = do c <- getChar
 strip :: String -> String
 strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
-parseTemplate :: String -> [(String, ContextItem)] -> String
+parseTemplate :: String -> ContextItem -> String
 parseTemplate t cx = getDisplay $ execState stepParser $ makePS t cx
 
 
