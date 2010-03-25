@@ -5,8 +5,11 @@
   UndecidableInstances  #-}
 
 module Text.RSTemplate.Types where
+
+import qualified Data.ByteString.Char8 as C
+
 type Key = String
-data TemplateCode = Text String 
+data TemplateCode = Text C.ByteString 
                   | Slot Key
                   | Loop Key [TemplateCode]
                   | Cond Key [TemplateCode]
@@ -14,17 +17,17 @@ data TemplateCode = Text String
 
 
 data ContextItem = ContextPairs [(Key,ContextItem)]
-                 | ContextValue String
+                 | ContextValue C.ByteString
                  | ContextList [ContextItem]
                    deriving (Show)
 
 data CX = forall a. (ToContext a) => CX a
 
 data ParserState = ParserState { getBlocks   :: [TemplateCode] 
-                               , getTextQ    :: String
-                               , getTemplate :: String } deriving (Show)
+                               , getTextQ    :: C.ByteString
+                               , getTemplate :: C.ByteString } deriving (Show)
 
-data EvalState = EvalState { getDisplay :: String }
+data EvalState = EvalState { getDisplay :: C.ByteString }
 
 class ToContext a where
     toContext :: a -> ContextItem
@@ -45,7 +48,7 @@ instance ToContext a => ToContext (String,a) where
     toContext x = ContextPairs $ [(\(a,b) -> (a,toContext b)) x]
 
 instance ToContext String where
-    toContext a = ContextValue a
+    toContext a = ContextValue (C.pack a)
 
 instance (Num a,Show a) => ToContext a where
-    toContext a = ContextValue $ show a
+    toContext a = ContextValue (C.pack . show $ a)
