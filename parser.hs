@@ -1,11 +1,21 @@
-{-# LANGUAGE ExistentialQuantification, TypeSynonymInstances, FlexibleInstances, OverlappingInstances  #-}
+{-# LANGUAGE ExistentialQuantification, 
+  TypeSynonymInstances, 
+  FlexibleInstances, 
+  OverlappingInstances, 
+  UndecidableInstances  #-}
 import Control.Monad
 import Control.Monad.State
 import Data.Maybe
 import Data.Char 
 import Data.List
 
-data ContextItem = ContextPairs [(String,ContextItem)]
+type Key = String
+data TemplateCode = Text String 
+                  | Slot Key
+                  | Loop Key TemplateCode
+                  | Cond Key TemplateCode
+
+data ContextItem = ContextPairs [(Key,ContextItem)]
                  | ContextValue String
                  | ContextList [ContextItem]
                    deriving (Show)
@@ -38,10 +48,8 @@ instance ToContext a => ToContext (String,a) where
 instance ToContext String where
     toContext a = ContextValue a
 
-
--- instance ToContext ([Char], [[([Char], [Char])]]) where
---     toContext (x1,x2) = ContextPairs [(x1,ContextList $ map toContext x2)]
-
+instance (Num a,Show a) => ToContext a where
+    toContext a = ContextValue $ show a
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 cxpLookup k (ContextPairs a) = lookup k a
@@ -49,7 +57,7 @@ cxpLookup k (ContextPairs a) = lookup k a
 test = [("fname","James")
        ,("lname","Sanders")
        ,("city","Chattanooga")
-       ,("state","Tennessee")]
+       ,("sastate","Tennessee")]
 
 data Pet = Pet {petName :: String, petType :: String}
 
@@ -59,6 +67,7 @@ instance ToContext Pet where
 
 pets = toContext $ ("pets",[Pet "Samson" "Dog"
                            ,Pet "Kiwi"   "Bird"
+                           ,Pet "Maple"  "Dog"
                            ,Pet "Simon"  "Cat"])
 
 showTmp (ContextValue x) = x
@@ -69,11 +78,11 @@ toCX (ContextValue _) = error "not a context"
 toCX (ContextPairs x) = x
 toCX (ContextList  x) = toCX (head x)
 
-addPrefix pf (ContextPairs x) = ContextPairs $ map (\(a,b) -> (pf ++ "." ++ a,b)) x
-addPrefix pf (ContextValue x) = ContextPairs [(pf,ContextValue x)]
+addPrefix n pf (ContextPairs x) = (ContextPairs $ map (\(a,b) -> (pf ++ "." ++ a,b)) x) `mergeCXP` toContext [("#",show n)]
+addPrefix n pf (ContextValue x) = ContextPairs [("#",ContextValue $ show n),("_",ContextValue x)]
 
-mapCL f (ContextList x)  = map f x
-mapCL f a@(ContextValue x) = [f a]
+mapCL f (ContextList x)  = map (\(a,b)->f b a) $ zip x [1..]
+mapCL f a@(ContextValue x) = [f 1 a]
 mapCL f _ = error "not a list of key/value pairs"
 
 makePS = PS "" 
@@ -104,7 +113,8 @@ stepParser = do c <- getChar
     where runCommand = do n <- getChar
                           case n of
                             '{' -> dropC >> substitute 
-                            '|' -> dropC >> loopParser
+                            '@' -> dropC >> loop
+                            '?' -> dropC >> conditional
                             _   -> toDisplay "{" >> continue
           getChar    = do t <- fmap getTemplate get
                           if null t then return '\0' else return (head t)
@@ -120,16 +130,31 @@ stepParser = do c <- getChar
                           toDisplay $ showTmp $ fromMaybe (ContextValue "") (cxpLookup find $ cx)
                           stepParser
 
-          loopParser = do tx <- fmap getTemplate get
+          conditional = do tx <- fmap getTemplate get
+                           cx <- fmap getContext  get 
+                           let v  = getParam tx
+                           let ei = findClosing "{?" "?}" tx
+                           let tmp = take (ei - 1) tx
+                           case cxpLookup v cx of
+                             Just a -> toDisplay $ parseTemplate (jumpParam tmp) $ cx
+                             Nothing -> toDisplay ""
+                           dropN (ei + 1)
+                           stepParser
+
+          loop       = do tx <- fmap getTemplate get
                           cx <- fmap getContext  get 
-                          let v  = strip $ takeWhile (/= '|') tx
-                          let ei = findClosing "{|" "|}" tx
+                          let v  = getParam tx
+                          let ei = findClosing "{@" "@}" tx
                           let tmp = take (ei - 1) tx
-                          let d = mapCL (parseTemplate (tail $ dropWhile (/= '|') tmp) . (mergeCXP cx) . addPrefix v) 
+                          let d = mapCL (\a b->parseTemplate (jumpParam tmp) . (mergeCXP cx) $ addPrefix a v $ b ) 
                                   $ fromMaybe (ContextList []) $ cxpLookup v cx
+                          --toDisplay $ show $ fmap (mapCL (addPrefix v)) $ cxpLookup v cx
                           dropN (ei + 1)
                           toDisplay $ concat d
                           stepParser
+
+          getParam  = strip . takeWhile (/='|') . tail . dropWhile (/= '|') 
+          jumpParam = tail . dropWhile (/= '|') . tail . dropWhile (/= '|')
 
 strip :: String -> String
 strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
@@ -143,7 +168,7 @@ findClosing open close text = findClosing' text 0 0
     findClosing' text i 0 = if i == 0 then findClosing' text i 1 else i
     findClosing' [x]  i n = i + 1
     findClosing' text i n = if open `isPrefixOf` text
-                                       then findClosing' (tail text) (i+1) (n+1)
-                                       else if close `isPrefixOf` text
-                                             then findClosing' (tail text) (i+1) (n-1)
-                                             else findClosing' (tail text) (i+1) n
+                              then findClosing' (tail text) (i+1) (n+1)
+                              else if close `isPrefixOf` text
+                                     then findClosing' (tail text) (i+1) (n-1)
+                                     else findClosing' (tail text) (i+1) n
