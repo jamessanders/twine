@@ -10,10 +10,12 @@ maintainer:          jimmyjazz14@gmail.com
 build-depends:       base
 build-type:          Simple
 Cabal-Version:       >= 1.2
+
 Library
      hs-source-dirs: src
      Build-Depends:     base >= 3 
                         , mtl >= 1.1.0.2
+                        , bytestring >= 0.9.1.5
      Exposed-modules:   Text.RSTemplate
      Other-modules:     Text.RSTemplate.Parser, Text.RSTemplate.Types
      ghc-options:       -O2
