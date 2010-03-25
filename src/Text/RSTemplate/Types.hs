@@ -11,8 +11,8 @@ import qualified Data.ByteString.Char8 as C
 type Key = String
 data TemplateCode = Text C.ByteString 
                   | Slot Key
-                  | Loop Key [TemplateCode]
-                  | Cond Key [TemplateCode]
+                  | Loop Key Key [TemplateCode]
+                  | Cond Key     [TemplateCode]
                   deriving (Show)
 
 

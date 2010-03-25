@@ -19,7 +19,18 @@ import qualified Data.ByteString.Char8 as C
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 (<+>) = mergeCXP
 
-cxpLookup k (ContextPairs a) = lookup k a
+cxpLookup k a = cxpLookup' (split '.' k) a
+cxpLookup' (x:xs) (ContextPairs c) = case lookup x c of
+                                       Just a -> cxpLookup' xs a
+                                       Nothing -> Nothing
+cxpLookup' (x:xs) _ = Nothing
+cxpLookup' []     a = Just a
+
+split :: Char -> [Char] -> [[Char]]
+split delim s
+    | [] == rest = [token]
+    | otherwise = token : split delim (tail rest)
+    where (token,rest) = span (/= delim) s
 
 showCX (ContextValue x) = x
 showCX (ContextList  x) = C.pack $ show x
@@ -28,9 +39,6 @@ showCX (ContextPairs x) = C.pack $ show x
 toCX (ContextValue _) = error "not a context"
 toCX (ContextPairs x) = x
 toCX (ContextList  x) = toCX (head x)
-
-addPrefix n pf (ContextPairs x) = (ContextPairs $ map (\(a,b) -> (pf ++ "." ++ a,b)) x) `mergeCXP` toContext [("#",show n)]
-addPrefix n pf (ContextValue x) = ContextPairs [("#",ContextValue $ C.pack $ show n),("_",ContextValue x)]
 
 mapCL f (ContextList x)  = map (\(a,b)->f b a) $ zip x [1..]
 mapCL f a@(ContextValue x) = [f 1 a]
@@ -103,13 +111,16 @@ stepParser = do c <- getChar
                            stepParser
 
           loop       = do tx <- fmap getTemplate get
-                          let v  = getParam tx
+                          let k  = getLoopParamL tx
+                          let as = getLoopParamN tx
                           let ei = findClosing "{@" "@}" tx
                           let tmp = C.take (ei - 1) tx
-                          addBlock $ Loop (C.unpack v) (parseTemplate (jumpParam tmp))
+                          addBlock $ Loop (C.unpack k) (C.unpack as) (parseTemplate (jumpParam tmp))
                           dropN (ei + 1)
                           stepParser
 
+          getLoopParamN  = strip . C.takeWhile (/='<') . C.tail . C.dropWhile (/= '|') 
+          getLoopParamL  = strip . C.takeWhile (/='|') . C.drop 2 . C.dropWhile (/='<') . C.tail . C.dropWhile (/= '|') 
           getParam  = strip . C.takeWhile (/='|') . C.tail . C.dropWhile (/= '|') 
           jumpParam = C.tail . C.dropWhile (/= '|') . C.tail . C.dropWhile (/= '|')
 
@@ -137,10 +148,10 @@ evalTemplateBlock cx (Slot k) = showCX $ fromMaybe (ContextValue C.empty) (cxpLo
 evalTemplateBlock cx (Cond k bls) = case cxpLookup k cx of
                                       Just _ -> evalTemplate bls cx
                                       Nothing-> C.empty
-evalTemplateBlock cx (Loop k bls) = case cxpLookup k cx of
-                                      Just val -> C.concat $ mapCL runLoop val
-                                      Nothing -> C.empty
-    where runLoop n ls = let ncx = addPrefix n k ls `mergeCXP` cx in evalTemplate bls ncx
+evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
+                                         Just val -> C.concat $ mapCL runLoop val
+                                         Nothing  -> C.empty
+    where runLoop n ls = let ncx = ContextPairs [(as,ls),("#",ContextValue $ C.pack $ show n)] `mergeCXP` cx in evalTemplate bls ncx
 
 
 --parseTemplate :: C.ByteString -> [TemplateCode]
