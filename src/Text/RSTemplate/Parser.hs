@@ -3,7 +3,7 @@
   FlexibleInstances, 
   OverlappingInstances, 
   UndecidableInstances  #-}
-module Text.RSTemplate.Parse (parseTemplate,evalTemplate,(<+>))) where
+module Text.RSTemplate.Parse (parseTemplate,parseFile,evalTemplate,(<+>))) where
 
 import Control.Monad
 import Control.Monad.State
