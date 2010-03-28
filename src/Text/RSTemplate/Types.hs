@@ -29,29 +29,29 @@ data EvalState = EvalState { getDisplay :: C.ByteString }
 
 
 
-class ContextHash a where
+class ContextLookup a where
     cxLookup :: String -> a -> Maybe ContextItem
 
-instance ContextHash CX where
+instance ContextLookup CX where
     cxLookup k (CX a) = cxLookup k a
 
-instance ContextHash [CX] where
+instance ContextLookup [CX] where
     cxLookup k []     = Nothing
     cxLookup k (x:xs) = case cxLookup k x of
                           Just a  -> Just a
                           Nothing -> cxLookup k xs
 
-instance ContextHash ContextItem where
+instance ContextLookup ContextItem where
     cxLookup k (ContextPairs a) = cxLookup k a
     
                                  
 
 
-instance ContextHash [(String,ContextItem)] where
+instance ContextLookup [(String,ContextItem)] where
     cxLookup k a = lookup k a
 
 
-data CX = forall a. (ContextHash a) => CX a
+data CX = forall a. (ContextLookup a) => CX a
 instance Show CX where
     show _ = "<CX>"
 
@@ -65,13 +65,13 @@ instance ToContext C.ByteString where
 instance ToContext String where
     toContext s = toContext (C.pack s)
 
-instance ContextHash a => ToContext (String,a) where
+instance ContextLookup a => ToContext (String,a) where
     toContext (k,v) = ContextPairs [CX [(k,ContextPairs [CX v])]]
 
-instance ContextHash a => ToContext [(String,a)] where
+instance ContextLookup a => ToContext [(String,a)] where
     toContext ls = foldl (\a b-> toContext b <+> a) (ContextPairs []) $ ls
     
-instance ContextHash a => ToContext a where
+instance ContextLookup a => ToContext a where
     toContext a = ContextPairs [CX a]
 
 instance ToContext [(String,String)] where
@@ -95,7 +95,7 @@ justcx = Just . toContext
 data PetType = Dog | Cat | Bird deriving (Show)
 data Pet = Pet {  getPetsType :: PetType, getPetsName :: String , getPetsMother :: Maybe Pet } deriving (Show)
 
-instance ContextHash Pet where
+instance ContextLookup Pet where
     cxLookup k pet = case k of
                        "name" -> justcx $ getPetsName pet
                        "type" -> justcx . show $ getPetsType pet
