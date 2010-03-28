@@ -78,6 +78,8 @@ instance ToContext a => ToContext [a] where
 instance ToContext a => ToContext (String,a) where
     toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
 
+instance ToContext a => ToContext [(String,a)] where
+    toContext ls = foldl (<+>) (ContextPairs []) $ map toContext ls
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 (<+>) = mergeCXP
