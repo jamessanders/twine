@@ -41,12 +41,16 @@ instance ContextLookup [CX] where
                           Just a  -> Just a
                           Nothing -> cxLookup k xs
 
+instance ContextLookup a => [a] where
+    cxLookup k []     = Nothing
+    cxLookup k (x:xs) = case cxLookup k x of
+                          Just a  -> Just a
+                          Nothing -> cxLookup k xs
+    
+
 instance ContextLookup ContextItem where
     cxLookup k (ContextPairs a) = cxLookup k a
-    
-                                 
-
-
+ 
 instance ContextLookup [(String,ContextItem)] where
     cxLookup k a = lookup k a
 
