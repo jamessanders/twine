@@ -16,12 +16,10 @@ data TemplateCode = Text C.ByteString
                   deriving (Show)
 
 
-data ContextItem = ContextPairs [(Key,ContextItem)]
+data ContextItem = ContextPairs [CX]
                  | ContextValue C.ByteString
                  | ContextList [ContextItem]
                    deriving (Show)
-
-data CX = forall a. (ToContext a) => CX a
 
 data ParserState = ParserState { getBlocks   :: [TemplateCode] 
                                , getTextQ    :: C.ByteString
@@ -29,26 +27,84 @@ data ParserState = ParserState { getBlocks   :: [TemplateCode]
 
 data EvalState = EvalState { getDisplay :: C.ByteString }
 
+
+
+class ContextHash a where
+    cxLookup :: String -> a -> Maybe ContextItem
+
+instance ContextHash CX where
+    cxLookup k (CX a) = cxLookup k a
+
+instance ContextHash [CX] where
+    cxLookup k []     = Nothing
+    cxLookup k (x:xs) = case cxLookup k x of
+                          Just a  -> Just a
+                          Nothing -> cxLookup k xs
+
+instance ContextHash ContextItem where
+    cxLookup k (ContextPairs a) = cxLookup k a
+    
+                                 
+
+
+instance ContextHash [(String,ContextItem)] where
+    cxLookup k a = lookup k a
+
+
+data CX = forall a. (ContextHash a) => CX a
+instance Show CX where
+    show _ = "<CX>"
+
+
 class ToContext a where
     toContext :: a -> ContextItem
 
-instance ToContext CX where
-    toContext (CX a) = toContext a
-
-instance ToContext [CX] where
-    toContext = ContextList . map toContext
-
-instance ToContext a => ToContext [a] where
-    toContext x = ContextList $ map toContext x
-
-instance ToContext a => ToContext [(String,a)] where
-    toContext x = ContextPairs $ map (\(a,b) -> (a,toContext b)) x
-
-instance ToContext a => ToContext (String,a) where
-    toContext x = ContextPairs $ [(\(a,b) -> (a,toContext b)) x]
+instance ToContext C.ByteString where
+    toContext s = ContextValue s
 
 instance ToContext String where
-    toContext a = ContextValue (C.pack a)
+    toContext s = toContext (C.pack s)
 
-instance (Num a,Show a) => ToContext a where
-    toContext a = ContextValue (C.pack . show $ a)
+instance ContextHash a => ToContext (String,a) where
+    toContext (k,v) = ContextPairs [CX [(k,ContextPairs [CX v])]]
+
+instance ContextHash a => ToContext [(String,a)] where
+    toContext ls = foldl (\a b-> toContext b <+> a) (ContextPairs []) $ ls
+    
+instance ContextHash a => ToContext a where
+    toContext a = ContextPairs [CX a]
+
+instance ToContext [(String,String)] where
+    toContext s = ContextPairs [CX (map (\(k,v)->(k,toContext v)) s)]
+
+instance ToContext a => ToContext [a] where
+    toContext a = ContextList (map toContext a)
+
+
+
+mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
+(<+>) = mergeCXP
+
+justcx :: (ToContext a) => a -> Maybe ContextItem
+justcx = Just . toContext
+
+------------------------------------------------------------------------
+-- TEST
+------------------------------------------------------------------------
+
+data PetType = Dog | Cat | Bird deriving (Show)
+data Pet = Pet {  getPetsType :: PetType, getPetsName :: String , getPetsMother :: Maybe Pet } deriving (Show)
+
+instance ContextHash Pet where
+    cxLookup k pet = case k of
+                       "name" -> justcx $ getPetsName pet
+                       "type" -> justcx . show $ getPetsType pet
+                       "mother" -> case getPetsMother pet of
+                                     Just a  -> justcx a
+                                     Nothing -> Nothing
+                       otherwise -> Nothing
+
+
+
+roxy  = Pet Cat "Roxy" Nothing
+simon = Pet Cat "Simon" (Just roxy)

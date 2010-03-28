@@ -6,7 +6,7 @@
 module Text.RSTemplate.Parser (parseTemplate
                               ,parseFile
                               ,evalTemplate
-                              ,(<+>)) where
+                              ) where
 
 import Control.Monad
 import Control.Monad.State
@@ -16,11 +16,9 @@ import Data.Maybe
 import Text.RSTemplate.Types
 import qualified Data.ByteString.Char8 as C
 
-mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
-(<+>) = mergeCXP
 
 cxpLookup k a = cxpLookup' (split '.' k) a
-cxpLookup' (x:xs) (ContextPairs c) = case lookup x c of
+cxpLookup' (x:xs) (ContextPairs c) = case cxLookup x c of
                                        Just a -> cxpLookup' xs a
                                        Nothing -> Nothing
 cxpLookup' (x:xs) _ = Nothing
@@ -151,7 +149,7 @@ evalTemplateBlock cx (Cond k bls) = case cxpLookup k cx of
 evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
                                          Just val -> C.concat $ mapCL runLoop val
                                          Nothing  -> C.empty
-    where runLoop n ls = let ncx = ContextPairs [(as,ls),("#",ContextValue $ C.pack $ show n)] `mergeCXP` cx in evalTemplate bls ncx
+    where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] `mergeCXP` cx in evalTemplate bls ncx
 
 
 --parseTemplate :: C.ByteString -> [TemplateCode]
