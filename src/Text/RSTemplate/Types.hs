@@ -69,21 +69,14 @@ instance ToContext C.ByteString where
 instance ToContext String where
     toContext s = toContext (C.pack s)
 
-instance ContextLookup a => ToContext (String,a) where
-    toContext (k,v) = ContextPairs [CX [(k,ContextPairs [CX v])]]
-
-instance ContextLookup a => ToContext [(String,a)] where
-    toContext ls = foldl (\a b-> toContext b <+> a) (ContextPairs []) $ ls
-    
 instance ContextLookup a => ToContext a where
-    toContext a = ContextPairs [CX a]
-
-instance ToContext [(String,String)] where
-    toContext s = ContextPairs [CX (map (\(k,v)->(k,toContext v)) s)]
+    toContext x = ContextPairs [CX x]
 
 instance ToContext a => ToContext [a] where
-    toContext a = ContextList (map toContext a)
+    toContext x = ContextList $ map toContext x
 
+instance ToContext a => ToContext (String,a) where
+    toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
 
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
@@ -112,3 +105,5 @@ instance ContextLookup Pet where
 
 roxy  = Pet Cat "Roxy" Nothing
 simon = Pet Cat "Simon" (Just roxy)
+
+template = C.pack "Pets: {@|p <- pets| {{p.name}} \n@}"
