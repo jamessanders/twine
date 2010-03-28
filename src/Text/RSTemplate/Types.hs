@@ -41,7 +41,7 @@ instance ContextLookup [CX] where
                           Just a  -> Just a
                           Nothing -> cxLookup k xs
 
-instance ContextLookup a => [a] where
+instance ContextLookup a => ContextLookup [a] where
     cxLookup k []     = Nothing
     cxLookup k (x:xs) = case cxLookup k x of
                           Just a  -> Just a
