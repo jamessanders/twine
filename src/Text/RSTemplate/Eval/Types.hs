@@ -17,6 +17,10 @@ data EvalState = EvalState { getDisplay :: C.ByteString }
 
 class ContextLookup a where
     cxLookup :: String -> a -> Maybe (ContextItem CX)
+    cxLookup k a = Nothing
+                   
+    ioCxLookup :: String -> a -> IO (Maybe (ContextItem CX))
+    ioCxLookup k a = return (cxLookup k a)
 
 instance ContextLookup CX where
     cxLookup k (CX a) = cxLookup k a

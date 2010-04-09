@@ -23,6 +23,5 @@ Library
                         ,Text.RSTemplate.Eval
                         ,Text.RSTemplate.Eval.Types
                         ,Text.RSTemplate.EvalIO
-                        ,Text.RSTemplate.EvalIO.Types                       
 
      ghc-options:       -O2

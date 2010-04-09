@@ -3,7 +3,6 @@ module Text.RSTemplate.EvalIO where
 import Data.Maybe
 import Text.RSTemplate.Eval
 import Text.RSTemplate.Eval.Types
-import Text.RSTemplate.EvalIO.Types
 import Text.RSTemplate.Parser.Types
 import qualified Data.ByteString.Char8 as C
 
@@ -16,7 +15,6 @@ ioCxpLookup' (x:xs) (ContextPairs c) = do l <- ioCxLookup x c
 ioCxpLookup' (x:xs) _ = return $ Nothing
 ioCxpLookup' []     a = return $ Just a
 
-evalIOTemplate :: [TemplateCode] -> ContextItem IOCX -> IO C.ByteString
 evalIOTemplate tc cx = mapM (evalIOTemplateBlock cx) tc >>= return . C.concat
 
 evalIOTemplateBlock cx (Text t) = return t
@@ -33,6 +31,6 @@ evalIOTemplateBlock cx (Loop k as bls) = do x <- ioCxpLookup k cx
                                             case x of
                                               Just val -> sequence (mapCL runLoop val) >>= return . C.concat
                                               Nothing  -> return C.empty
-    where runLoop n ls = let ncx = toIOContext [(as,ls),("#",ContextValue $ C.pack $ show n)] :: ContextItem IOCX
+    where runLoop n ls = let ncx = toContext [(as,ls),("#",ContextValue $ C.pack $ show n)] 
                          in evalIOTemplate bls (ncx <+> cx) 
 

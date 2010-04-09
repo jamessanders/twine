@@ -1,6 +1,5 @@
 module Text.RSTemplate (module Text.RSTemplate.Parser
                        ,module Text.RSTemplate.Eval.Types
-                       ,module Text.RSTemplate.EvalIO.Types
                        ,evalFile
                        ,ioEvalFile )
 where
@@ -11,7 +10,6 @@ import Text.RSTemplate.Eval
 import Text.RSTemplate.Eval.Types
 
 import Text.RSTemplate.EvalIO
-import Text.RSTemplate.EvalIO.Types
 
 import System.FilePath 
 
