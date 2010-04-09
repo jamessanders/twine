@@ -7,6 +7,7 @@ module Text.RSTemplate.Parser (parseTemplate
                               ,evalFile
                               ,parseFile
                               ,evalTemplate
+                              ,evalIOTemplate
                               ,doInclude
                               ) where
 
@@ -161,6 +162,25 @@ evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
                                          Just val -> C.concat $ mapCL runLoop val
                                          Nothing  -> C.empty
     where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] `mergeCXP` cx in evalTemplate bls ncx
+
+
+evalIOTemplate :: (IOContextLookup a) => [TemplateCode] -> a -> IO C.ByteString
+evalIOTemplate tc cx = mapM (evalIOTemplateBlock cx) tc >>= return . C.concat
+
+evalIOTemplateBlock cx (Text t) = return t
+
+evalIOTemplateBlock cx (Slot k) = do x <- ioCxLookup k cx
+                                     return (showCX $ fromMaybe (ContextValue C.empty) x)
+
+evalIOTemplateBlock cx (Cond k bls) = do x <- ioCxLookup k cx
+                                         case  x of
+                                           Just _ -> evalIOTemplate bls cx
+                                           Nothing-> return C.empty
+
+-- evalIOTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
+--                                          Just val -> C.concat $ mapCL runLoop val
+--                                          Nothing  -> C.empty
+--     where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] `mergeCXP` cx in evalTemplate bls ncx
 
 
 --parseTemplate :: C.ByteString -> [TemplateCode]
