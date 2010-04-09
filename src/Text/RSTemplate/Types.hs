@@ -101,17 +101,12 @@ instance ContextLookup a => IOContextLookup a where
                        Just y -> return $ Just (toIOContext y)
                        Nothing-> return Nothing
 
+instance IOContextLookup (String,ContextItem IOCX) where
+    ioCxLookup k (v1,v2) = return (if v1 == k then Just v2 else Nothing)
 
 instance IOContextLookup [(String,ContextItem IOCX)] where
     ioCxLookup k a = return (lookup k a)
 
-
-instance IOContextLookup [IOCX] where
-    ioCxLookup k []     = return Nothing
-    ioCxLookup k (x:xs) = do l <- ioCxLookup k x
-                             case l of
-                               Just a  -> return (Just a)
-                               Nothing -> ioCxLookup k xs
 
 instance IOContextLookup a => IOContextLookup [a] where
     ioCxLookup k []     = return Nothing
@@ -125,12 +120,8 @@ instance IOContextLookup IOCX where
     ioCxLookup k (IOCX a) = ioCxLookup k a
 
 instance IOContextLookup (ContextItem IOCX) where
-    ioCxLookup k v = return (Just v)
-
-instance IOContextLookup CX where
-    ioCxLookup k (CX v) = case cxLookup k v of
-                            Just y  -> return $ Just (toIOContext y)
-                            Nothing -> return Nothing
+    ioCxLookup k (ContextPairs v) = ioCxLookup k v
+    ioCxLookup k x = return (Just x)
 
 ------------------------------------------------------------------------
 
@@ -138,8 +129,9 @@ class ToIOContext a where
     toIOContext :: a -> ContextItem IOCX
 
 instance ToIOContext (ContextItem CX) where
-    toIOContext (ContextPairs a) = ContextPairs (map (\x->IOCX x) a)
-    toIOContext a = toIOContext a
+    toIOContext (ContextPairs a) = ContextPairs (map (\(CX x)->IOCX x) a)
+    toIOContext (ContextValue a) = ContextValue a
+    toIOContext (ContextList  a) = ContextList (map toIOContext a)
 
 instance IOContextLookup a => ToIOContext a where
      toIOContext x = ContextPairs [IOCX x]
@@ -147,11 +139,7 @@ instance IOContextLookup a => ToIOContext a where
 instance ToIOContext a => ToIOContext (String,a) where
     toIOContext (k,v) = toIOContext [(k,toIOContext v)]
 
-instance ToIOContext a => ToIOContext [a] where
-    toIOContext ls = ContextPairs (map (IOCX . toIOContext) ls)
-
-
-
+liftCX a = toIOContext $ toContext a
 ------------------------------------------------------------------------
 -- TEST
 ------------------------------------------------------------------------
@@ -178,4 +166,5 @@ template = C.pack "Pets: {@|p <- pets| {{p.name}} \n@}"
 data Directory = Directory String deriving (Show)
 
 instance IOContextLookup Directory where
-    ioCxLookup k (Directory a) = return $ Just (ContextValue $ C.pack a)
+    ioCxLookup k (Directory a) = do ls <- getDirectoryContents a 
+                                    return $ Just (liftCX ls)

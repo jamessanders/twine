@@ -5,6 +5,7 @@
   UndecidableInstances  #-}
 module Text.RSTemplate.Parser (parseTemplate
                               ,evalFile
+                              ,ioEvalFile
                               ,parseFile
                               ,evalTemplate
                               ,evalIOTemplate
@@ -27,6 +28,16 @@ cxpLookup' (x:xs) (ContextPairs c) = case cxLookup x c of
                                        Nothing -> Nothing
 cxpLookup' (x:xs) _ = Nothing
 cxpLookup' []     a = Just a
+
+ioCxpLookup k a = ioCxpLookup' (split '.' k) a
+
+ioCxpLookup' (x:xs) (ContextPairs c) = do l <- ioCxLookup x c
+                                          case l of
+                                            Just a  -> ioCxpLookup' xs a
+                                            Nothing -> return Nothing
+ioCxpLookup' (x:xs) _ = return $ Nothing
+ioCxpLookup' []     a = return $ Just a
+
 
 split :: Char -> [Char] -> [[Char]]
 split delim s
@@ -161,26 +172,29 @@ evalTemplateBlock cx (Cond k bls) = case cxpLookup k cx of
 evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
                                          Just val -> C.concat $ mapCL runLoop val
                                          Nothing  -> C.empty
-    where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] `mergeCXP` cx in evalTemplate bls ncx
+    where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx 
+                         in evalTemplate bls ncx
 
 
-evalIOTemplate :: (IOContextLookup a) => [TemplateCode] -> a -> IO C.ByteString
+evalIOTemplate :: [TemplateCode] -> ContextItem IOCX -> IO C.ByteString
 evalIOTemplate tc cx = mapM (evalIOTemplateBlock cx) tc >>= return . C.concat
 
 evalIOTemplateBlock cx (Text t) = return t
 
-evalIOTemplateBlock cx (Slot k) = do x <- ioCxLookup k cx
+evalIOTemplateBlock cx (Slot k) = do x <- ioCxpLookup k cx
                                      return (showCX $ fromMaybe (ContextValue C.empty) x)
 
-evalIOTemplateBlock cx (Cond k bls) = do x <- ioCxLookup k cx
+evalIOTemplateBlock cx (Cond k bls) = do x <- ioCxpLookup k cx
                                          case  x of
                                            Just _ -> evalIOTemplate bls cx
                                            Nothing-> return C.empty
 
--- evalIOTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
---                                          Just val -> C.concat $ mapCL runLoop val
---                                          Nothing  -> C.empty
---     where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] `mergeCXP` cx in evalTemplate bls ncx
+evalIOTemplateBlock cx (Loop k as bls) = do x <- ioCxpLookup k cx
+                                            case x of
+                                              Just val -> sequence (mapCL runLoop val) >>= return . C.concat
+                                              Nothing  -> return C.empty
+    where runLoop n ls = let ncx = toIOContext [(as,ls),("#",ContextValue $ C.pack $ show n)] :: ContextItem IOCX
+                         in evalIOTemplate bls (ncx <+> cx) 
 
 
 --parseTemplate :: C.ByteString -> [TemplateCode]
@@ -188,6 +202,7 @@ parseTemplate t = getBlocks $ execState stepParser $ makePS t
 
 evalFile  fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
 
+ioEvalFile fp = parseFile fp >>= \ps -> return (\cx-> evalIOTemplate ps cx)
 --evalFileWithIncl fp = parseFile fp >>= doInclude 
 
 parseFile fp = C.readFile fp >>= return . parseTemplate
@@ -197,3 +212,4 @@ doInclude base ps = foldM ax [] ps
                               wi <- doInclude base pf
                               return (a ++ wi)
           ax a x         = return (a ++ [x])
+
