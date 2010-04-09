@@ -4,8 +4,10 @@
   OverlappingInstances, 
   UndecidableInstances  #-}
 module Text.RSTemplate.Parser (parseTemplate
+                              ,evalFile
                               ,parseFile
                               ,evalTemplate
+                              ,doInclude
                               ) where
 
 import Control.Monad
@@ -14,6 +16,7 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import Text.RSTemplate.Types
+import System.FilePath
 import qualified Data.ByteString.Char8 as C
 
 
@@ -81,6 +84,7 @@ stepParser = do c <- getChar
                             '{' -> digestTextBlock >> dropC >> substitute 
                             '@' -> digestTextBlock >> dropC >> loop
                             '?' -> digestTextBlock >> dropC >> conditional
+                            '+' -> digestTextBlock >> dropC >> include
                             _   -> addToTextQ (C.pack "{")  >> continue
 
           getChar    = do t <- fmap getTemplate get
@@ -116,6 +120,13 @@ stepParser = do c <- getChar
                           addBlock $ Loop (C.unpack k) (C.unpack as) (parseTemplate (jumpParam tmp))
                           dropN (ei + 1)
                           stepParser
+
+          include     = do tx <- fmap getTemplate get
+                           let ei  = findClosing "{+" "+}" tx
+                           let tmp = C.take (ei - 1) tx
+                           addBlock $ Incl (C.unpack (strip tmp))
+                           dropN (ei + 1)
+                           stepParser
 
           getLoopParamN  = strip . C.takeWhile (/='<') . C.tail . C.dropWhile (/= '|') 
           getLoopParamL  = strip . C.takeWhile (/='|') . C.drop 2 . C.dropWhile (/='<') . C.tail . C.dropWhile (/= '|') 
@@ -154,4 +165,13 @@ evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
 
 --parseTemplate :: C.ByteString -> [TemplateCode]
 parseTemplate t = getBlocks $ execState stepParser $ makePS t
-parseFile    fp = C.readFile fp >>= return . (evalTemplate . parseTemplate) 
+
+evalFile  fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
+
+--evalFileWithIncl fp = parseFile fp >>= doInclude 
+
+parseFile fp = C.readFile fp >>= return . parseTemplate
+
+doInclude base ps = foldM ax [] ps 
+    where ax a (Incl fs) = parseFile (base </> fs) >>= \x-> return (a ++ x)
+          ax a x         = return (a ++ [x])

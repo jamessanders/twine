@@ -13,6 +13,7 @@ data TemplateCode = Text C.ByteString
                   | Slot Key
                   | Loop Key Key [TemplateCode]
                   | Cond Key     [TemplateCode]
+                  | Incl FilePath
                   deriving (Show)
 
 
