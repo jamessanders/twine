@@ -173,5 +173,7 @@ evalFile  fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
 parseFile fp = C.readFile fp >>= return . parseTemplate
 
 doInclude base ps = foldM ax [] ps 
-    where ax a (Incl fs) = parseFile (base </> fs) >>= \x-> return (a ++ x)
+    where ax a (Incl fs) = do pf <- parseFile (base </> fs) 
+                              wi <- doInclude base pf
+                              return (a ++ wi)
           ax a x         = return (a ++ [x])
