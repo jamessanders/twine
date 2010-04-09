@@ -3,12 +3,11 @@
   FlexibleInstances, 
   OverlappingInstances, 
   UndecidableInstances  #-}
+
+-- This is where all the parsing magic happens.
+
 module Text.RSTemplate.Parser (parseTemplate
-                              ,evalFile
-                              ,ioEvalFile
                               ,parseFile
-                              ,evalTemplate
-                              ,evalIOTemplate
                               ,doInclude
                               ) where
 
@@ -17,27 +16,13 @@ import Control.Monad.State
 import Data.Char 
 import Data.List
 import Data.Maybe
-import Text.RSTemplate.Types
 import System.FilePath
+import Text.RSTemplate.Parser.Types
 import qualified Data.ByteString.Char8 as C
 
 
-cxpLookup k a = cxpLookup' (split '.' k) a
-cxpLookup' (x:xs) (ContextPairs c) = case cxLookup x c of
-                                       Just a -> cxpLookup' xs a
-                                       Nothing -> Nothing
-cxpLookup' (x:xs) _ = Nothing
-cxpLookup' []     a = Just a
-
-ioCxpLookup k a = ioCxpLookup' (split '.' k) a
-
-ioCxpLookup' (x:xs) (ContextPairs c) = do l <- ioCxLookup x c
-                                          case l of
-                                            Just a  -> ioCxpLookup' xs a
-                                            Nothing -> return Nothing
-ioCxpLookup' (x:xs) _ = return $ Nothing
-ioCxpLookup' []     a = return $ Just a
-
+strip :: C.ByteString -> C.ByteString
+strip = C.reverse . C.dropWhile isSpace . C.reverse . C.dropWhile isSpace
 
 split :: Char -> [Char] -> [[Char]]
 split delim s
@@ -45,19 +30,6 @@ split delim s
     | otherwise = token : split delim (tail rest)
     where (token,rest) = span (/= delim) s
 
-showCX (ContextValue x) = x
-showCX (ContextList  x) = C.pack $ show x
-showCX (ContextPairs x) = C.pack $ show x
-
-toCX (ContextValue _) = error "not a context"
-toCX (ContextPairs x) = x
-toCX (ContextList  x) = toCX (head x)
-
-mapCL f (ContextList x)  = map (\(a,b)->f b a) $ zip x [1..]
-mapCL f a@(ContextValue x) = [f 1 a]
-mapCL f _ = error "not a list of key/value pairs"
-
-makePS = ParserState [] C.empty 
 
 shift :: State ParserState ()
 shift = do ps <- get
@@ -145,8 +117,6 @@ stepParser = do c <- getChar
           getParam  = strip . C.takeWhile (/='|') . C.tail . C.dropWhile (/= '|') 
           jumpParam = C.tail . C.dropWhile (/= '|') . C.tail . C.dropWhile (/= '|')
 
-strip :: C.ByteString -> C.ByteString
-strip = C.reverse . C.dropWhile isSpace . C.reverse . C.dropWhile isSpace
 
 findClosing open' close' text = findClosing' text 0 0
    where
@@ -162,48 +132,7 @@ findClosing open' close' text = findClosing' text 0 0
 
 ------------------------------------------------------------------------
 
-evalTemplate tc cx = C.concat $ map (evalTemplateBlock cx) tc
-
-evalTemplateBlock cx (Text t) = t
-evalTemplateBlock cx (Slot k) = showCX $ fromMaybe (ContextValue C.empty) (cxpLookup k cx)
-evalTemplateBlock cx (Cond k bls) = case cxpLookup k cx of
-                                      Just _ -> evalTemplate bls cx
-                                      Nothing-> C.empty
-evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
-                                         Just val -> C.concat $ mapCL runLoop val
-                                         Nothing  -> C.empty
-    where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx 
-                         in evalTemplate bls ncx
-
-
-evalIOTemplate :: [TemplateCode] -> ContextItem IOCX -> IO C.ByteString
-evalIOTemplate tc cx = mapM (evalIOTemplateBlock cx) tc >>= return . C.concat
-
-evalIOTemplateBlock cx (Text t) = return t
-
-evalIOTemplateBlock cx (Slot k) = do x <- ioCxpLookup k cx
-                                     return (showCX $ fromMaybe (ContextValue C.empty) x)
-
-evalIOTemplateBlock cx (Cond k bls) = do x <- ioCxpLookup k cx
-                                         case  x of
-                                           Just _ -> evalIOTemplate bls cx
-                                           Nothing-> return C.empty
-
-evalIOTemplateBlock cx (Loop k as bls) = do x <- ioCxpLookup k cx
-                                            case x of
-                                              Just val -> sequence (mapCL runLoop val) >>= return . C.concat
-                                              Nothing  -> return C.empty
-    where runLoop n ls = let ncx = toIOContext [(as,ls),("#",ContextValue $ C.pack $ show n)] :: ContextItem IOCX
-                         in evalIOTemplate bls (ncx <+> cx) 
-
-
---parseTemplate :: C.ByteString -> [TemplateCode]
 parseTemplate t = getBlocks $ execState stepParser $ makePS t
-
-evalFile  fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
-
-ioEvalFile fp = parseFile fp >>= \ps -> return (\cx-> evalIOTemplate ps cx)
---evalFileWithIncl fp = parseFile fp >>= doInclude 
 
 parseFile fp = C.readFile fp >>= return . parseTemplate
 

@@ -1,4 +1,7 @@
-module Text.RSTemplate (module Text.RSTemplate.Parser, module Text.RSTemplate.Types)
+module Text.RSTemplate (module Text.RSTemplate.Parser, evalFile )
 where
-import Text.RSTemplate.Types
+
 import Text.RSTemplate.Parser
+import Text.RSTemplate.Eval
+
+evalFile  fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
