@@ -1,4 +1,11 @@
-module Text.RSTemplate.IOEval where
+module Text.RSTemplate.EvalIO where
+
+import Data.Maybe
+import Text.RSTemplate.Eval
+import Text.RSTemplate.Eval.Types
+import Text.RSTemplate.EvalIO.Types
+import Text.RSTemplate.Parser.Types
+import qualified Data.ByteString.Char8 as C
 
 ioCxpLookup k a = ioCxpLookup' (split '.' k) a
 
@@ -29,4 +36,3 @@ evalIOTemplateBlock cx (Loop k as bls) = do x <- ioCxpLookup k cx
     where runLoop n ls = let ncx = toIOContext [(as,ls),("#",ContextValue $ C.pack $ show n)] :: ContextItem IOCX
                          in evalIOTemplate bls (ncx <+> cx) 
 
-ioEvalFile fp = parseFile fp >>= \ps -> return (\cx-> evalIOTemplate ps cx)

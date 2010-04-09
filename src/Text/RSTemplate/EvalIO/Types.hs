@@ -6,7 +6,10 @@
 
 module Text.RSTemplate.EvalIO.Types where
 
-import Text.Rstemplate.Eval.Types
+import Text.RSTemplate.Eval.Types
+import qualified Data.ByteString.Char8 as C
+
+newtype PureContext = PureContext (ContextItem CX)
 
 data IOCX = forall a. (IOContextLookup a) => IOCX a
 
@@ -16,10 +19,12 @@ instance Show IOCX where
 class IOContextLookup a where 
     ioCxLookup :: String -> a -> IO (Maybe (ContextItem IOCX))
 
-instance ContextLookup a => IOContextLookup a where
-    ioCxLookup k v = case (cxLookup k v) of
-                       Just y -> return $ Just (toIOContext y)
-                       Nothing-> return Nothing
+
+instance IOContextLookup CX where
+    ioCxLookup k (CX v) = case (cxLookup k v) of
+                            Just y -> return $ Just (pureToIO y)
+                            Nothing-> return Nothing
+                                     
 
 instance IOContextLookup (String,ContextItem IOCX) where
     ioCxLookup k (v1,v2) = return (if v1 == k then Just v2 else Nothing)
@@ -48,16 +53,17 @@ instance IOContextLookup (ContextItem IOCX) where
 class ToIOContext a where
     toIOContext :: a -> ContextItem IOCX
 
-instance ToIOContext (ContextItem CX) where
-    toIOContext (ContextPairs a) = ContextPairs (map (\(CX x)->IOCX x) a)
-    toIOContext (ContextValue a) = ContextValue a
-    toIOContext (ContextList  a) = ContextList (map toIOContext a)
-
 instance IOContextLookup a => ToIOContext a where
      toIOContext x = ContextPairs [IOCX x]
 
 instance ToIOContext a => ToIOContext (String,a) where
     toIOContext (k,v) = toIOContext [(k,toIOContext v)]
 
-liftCX a = toIOContext $ toContext a
+liftCX :: (ToContext a) => a -> ContextItem IOCX
+liftCX = pureToIO . toContext
 
+pureToIO (ContextPairs a) = ContextPairs (map (\x->IOCX x) a)
+pureToIO (ContextValue a) = ContextValue a
+pureToIO (ContextList  a) = ContextList (map pureToIO a)
+
+------------------------------------------------------------------------
