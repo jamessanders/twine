@@ -138,7 +138,7 @@ parseFile fp = C.readFile fp >>= return . parseTemplate
 
 doInclude base ps = foldM ax [] ps 
     where ax a (Incl fs) = do pf <- parseFile (base </> fs) 
-                              wi <- doInclude base pf
+                              wi <- doInclude (takeDirectory (base </> fs)) pf
                               return (a ++ wi)
           ax a x         = return (a ++ [x])
 
