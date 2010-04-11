@@ -17,4 +17,4 @@ evalFile   fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
 ioEvalFile fp = do
   ps <- parseFile fp 
   pi <- doInclude (takeDirectory fp) ps  
-  return (\cx-> evalIOTemplate ps cx)
+  return (\cx-> evalIOTemplate pi cx)
