@@ -29,8 +29,9 @@ evalIOTemplateBlock cx (Cond k bls) = do x <- ioCxpLookup k cx
 
 evalIOTemplateBlock cx (Loop k as bls) = do x <- ioCxpLookup k cx
                                             case x of
-                                              Just val -> sequence (mapCL runLoop val) >>= return . C.concat
+                                              Just val -> do x <- sequence (mapCL runLoop val) 
+                                                             return . C.concat $ x
                                               Nothing  -> return C.empty
-    where runLoop n ls = let ncx = toContext [(as,ls),("#",ContextValue $ C.pack $ show n)] 
-                         in evalIOTemplate bls (ncx <+> cx) 
+    where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx  
+                         in evalIOTemplate bls ncx
 

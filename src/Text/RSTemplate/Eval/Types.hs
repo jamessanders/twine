@@ -16,38 +16,46 @@ data ContextItem a = ContextPairs [a]
 data EvalState = EvalState { getDisplay :: C.ByteString }
 
 class ContextLookup a where
-    cxLookup :: String -> a -> Maybe (ContextItem CX)
-    cxLookup k a = Nothing
-                   
+    cxLookup   :: String -> a -> Maybe (ContextItem CX)
     ioCxLookup :: String -> a -> IO (Maybe (ContextItem CX))
+
+    cxLookup k a   = Nothing
     ioCxLookup k a = return (cxLookup k a)
 
 instance ContextLookup CX where
-    cxLookup k (CX a) = cxLookup k a
+    cxLookup k (CX a)   = cxLookup k a
+    ioCxLookup k (CX a) = ioCxLookup k a
 
-instance ContextLookup [CX] where
-    cxLookup k []     = Nothing
-    cxLookup k (x:xs) = case cxLookup k x of
-                          Just a  -> Just a
-                          Nothing -> cxLookup k xs
+-- instance ContextLookup [CX] where
+--     cxLookup k []     = Nothing
+--     cxLookup k (x:xs) = case cxLookup k x of
+--                           Just a  -> Just a
+--                           Nothing -> cxLookup k xs
+--     ioCxLookup k a = return (cxLookup k a)
 
 instance ContextLookup a => ContextLookup [a] where
     cxLookup k []     = Nothing
     cxLookup k (x:xs) = case cxLookup k x of
                           Just a  -> Just a
                           Nothing -> cxLookup k xs
-    
 
+    ioCxLookup k []     = return $ Nothing
+    ioCxLookup k (x:xs) = do look <- ioCxLookup k x
+                             case look of
+                               Just a  -> return $ Just a
+                               Nothing -> ioCxLookup k xs
+    
 instance ContextLookup (ContextItem CX) where
-    cxLookup k (ContextPairs a) = cxLookup k a
+    cxLookup k (ContextPairs a)   = cxLookup k a
+    ioCxLookup k (ContextPairs a) = ioCxLookup k a
  
 instance ContextLookup [(String,ContextItem CX)] where
     cxLookup k a = lookup k a
-
+    ioCxLookup k a = return (cxLookup k a)
 
 data CX = forall a. (ContextLookup a) => CX a
 instance Show CX where
-    show _ = "<CX>"
+    show _ = "!CX!"
 
 
 class ToContext a where
