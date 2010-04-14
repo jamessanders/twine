@@ -13,8 +13,13 @@ import Text.RSTemplate.EvalIO
 
 import System.FilePath 
 
-evalFile   fp = parseFile fp >>= \ps -> return (\cx-> evalTemplate ps cx)
+evalFile' fp = do ps <- parseFile fp 
+                  doInclude (takeDirectory fp) ps
+
+evalFile fp = do 
+  pi <- evalFile' fp
+  return (\cx-> evalTemplate pi cx)
+
 ioEvalFile fp = do
-  ps <- parseFile fp 
-  pi <- doInclude (takeDirectory fp) ps  
+  pi <- evalFile' fp
   return (\cx-> evalIOTemplate pi cx)
