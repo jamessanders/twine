@@ -1,6 +1,7 @@
 module Text.RSTemplate (module Text.RSTemplate.Parser
                        ,module Text.RSTemplate.Eval.Types
                        ,evalFile
+                       ,evalTemplate
                        ,ioEvalFile )
 where
 
