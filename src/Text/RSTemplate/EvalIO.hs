@@ -1,4 +1,4 @@
-module Text.RSTemplate.EvalIO where
+module Text.RSTemplate.EvalIO (evalIOTemplate) where
 
 import Data.Maybe
 import Text.RSTemplate.Eval
@@ -27,23 +27,35 @@ ievalExpr cx (NumberLiteral n) = return $ justcx $ show n
 ievalExpr cx (StringLiteral n) = return $ justcx n
 
 
-evalIOTemplate tc cx = mapM (evalIOTemplateBlock cx) tc >>= return . C.concat
+evalIOTemplate tc cx = walk cx tc [] >>= return . C.concat . reverse
 
-evalIOTemplateBlock cx (Text t) = return t
+walk _  []     nl = return nl
+walk cx (x:xs) nl = do (c,str) <- evalIOTemplateBlock cx x
+                       walk c xs (str : nl)
+
+evalIOTemplateBlock cx (Text t) = return (cx,t)
 
 evalIOTemplateBlock cx (Slot k) = do x <- ievalExpr cx k
-                                     return (showCX $ fromMaybe (ContextValue C.empty) x)
+                                     return (cx,(showCX $ fromMaybe (ContextValue C.empty) x))
+
+evalIOTemplateBlock cx (Assign k e) = do ev <- ievalExpr cx e
+                                         case ev of
+                                           Just a  -> return (cx <+> ContextPairs [CX [(k,a)]] 
+                                                             ,C.empty)
+                                           Nothing -> return (cx,C.empty)
+
 
 evalIOTemplateBlock cx (Cond k bls) = do x <- ievalExpr cx k
                                          case  x of
-                                           Just _ -> evalIOTemplate bls cx
-                                           Nothing-> return C.empty
+                                           Just _ -> do n <- evalIOTemplate bls cx
+                                                        return (cx,n)
+                                           Nothing-> return (cx,C.empty)
 
 evalIOTemplateBlock cx (Loop k as bls) = do x <- ievalExpr cx k
                                             case x of
                                               Just val -> do x <- sequence (mapCL runLoop val) 
-                                                             return . C.concat $ x
-                                              Nothing  -> return C.empty
+                                                             return (cx,C.concat $ x)
+                                              Nothing  -> return (cx,C.empty)
     where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx  
                          in evalIOTemplate bls ncx
 
