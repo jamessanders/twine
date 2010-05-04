@@ -16,6 +16,7 @@ data TemplateCode = Text C.ByteString
                   | Loop Expr Key [TemplateCode]
                   | Cond Expr     [TemplateCode]
                   | Incl FilePath
+                  | Assign Key Expr
                   deriving (Show)
 
 

@@ -72,6 +72,7 @@ stepParser = do c <- getChar
                             '@' -> digestTextBlock >> dropC >> loop
                             '?' -> digestTextBlock >> dropC >> conditional
                             '+' -> digestTextBlock >> dropC >> include
+                            '|' -> digestTextBlock >> dropC >> assign
                             _   -> addToTextQ (C.pack "{")  >> continue
 
           getChar    = do t <- fmap getTemplate get
@@ -114,6 +115,14 @@ stepParser = do c <- getChar
                            addBlock $ Incl (C.unpack (strip tmp))
                            dropN (ei + 1)
                            stepParser
+
+          assign       = do tx <- fmap getTemplate get
+                            let ei  = findClosing "{|" "|}" tx
+                            let tmp = C.take (ei - 1) tx
+                            let (k,v) = C.break (== '=') tmp 
+                            addBlock $ Assign (C.unpack (strip k)) (parseExpr (C.unpack . strip . C.tail $ v))
+                            dropN (ei + 1)
+                            stepParser
 
           getLoopParamN  = strip . C.takeWhile (/='<') . C.tail . C.dropWhile (/= '|') 
           getLoopParamL  = strip . C.takeWhile (/='|') . C.drop 2 . C.dropWhile (/='<') . C.tail . C.dropWhile (/= '|') 

@@ -1,4 +1,4 @@
-module Text.RSTemplate.Eval where
+module Text.RSTemplate.Eval (evalTemplate,split,mapCL,showCX) where
 
 import Text.RSTemplate.Parser.Types
 import Text.RSTemplate.Eval.Types
@@ -40,16 +40,28 @@ evalExpr cx (Var n) = cxpLookup n cx
 evalExpr cx (NumberLiteral n) = justcx $ show n
 evalExpr cx (StringLiteral n) = justcx n
 
-evalTemplate tc cx = C.concat $ map (evalTemplateBlock cx) tc
+evalTemplate tc cx = C.concat . reverse $ walk cx tc []
 
-evalTemplateBlock cx (Text t) = t
-evalTemplateBlock cx (Slot k) = showCX $ fromMaybe (ContextValue C.empty) (evalExpr cx k)
+walk _  []     nl = nl
+walk cx (x:xs) nl = let (c,str) = evalTemplateBlock cx x
+                    in walk c xs (str:nl)
+
+evalTemplateBlock cx (Text t) = (cx,t)
+
+evalTemplateBlock cx (Slot k) = (cx,showCX $ fromMaybe (ContextValue C.empty) (evalExpr cx k))
+
+evalTemplateBlock cx (Assign k e) = let ev = evalExpr cx e
+                                    in case ev of
+                                         Just a  -> (cx <+> ContextPairs [CX [(k,a)]] ,C.empty)
+                                         Nothing -> (cx,C.empty)
+
 evalTemplateBlock cx (Cond k bls) = case evalExpr cx k of
-                                      Just _ -> evalTemplate bls cx
-                                      Nothing-> C.empty
+                                      Just _ -> (cx,evalTemplate bls cx)
+                                      Nothing-> (cx,C.empty)
+
 evalTemplateBlock cx (Loop k as bls) = case evalExpr cx k of
-                                         Just val -> C.concat $ mapCL runLoop val
-                                         Nothing  -> C.empty
+                                         Just val -> (cx,C.concat $ mapCL runLoop val)
+                                         Nothing  -> (cx,C.empty)
     where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx 
                          in evalTemplate bls ncx
 
