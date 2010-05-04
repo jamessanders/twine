@@ -1,5 +1,5 @@
 name:                rstemplate
-version:             0.6.3
+version:             0.7.1
 synopsis:            very simple template system
 description:         very simple template system
 category:            Data
@@ -20,8 +20,12 @@ Library
      Exposed-modules:   Text.RSTemplate
      Other-modules:     Text.RSTemplate.Parser
                         ,Text.RSTemplate.Parser.Types
+                        ,Text.RSTemplate.Parser.Utils
                         ,Text.RSTemplate.Eval
                         ,Text.RSTemplate.Eval.Types
                         ,Text.RSTemplate.EvalIO
+                        ,Text.RSTemplate.Eval.Builtins
+                        ,Text.RSTemplate.ExprParser
+
 
      ghc-options:       -O2

@@ -2,6 +2,8 @@ module Text.RSTemplate.Eval where
 
 import Text.RSTemplate.Parser.Types
 import Text.RSTemplate.Eval.Types
+import Text.RSTemplate.Eval.Builtins
+
 import Data.Maybe
 
 import qualified Data.ByteString.Char8 as C
@@ -31,14 +33,21 @@ cxpLookup' (x:xs) (ContextPairs c) = case cxLookup x c of
 cxpLookup' (x:xs) _ = Nothing
 cxpLookup' []     a = Just a
 
+evalExpr cx (Func n a) = case lookup n builtins of
+                           Just f  -> f $ map (evalExpr cx) a
+                           Nothing -> error $ n ++ " is not a builtin function."
+evalExpr cx (Var n) = cxpLookup n cx
+evalExpr cx (NumberLiteral n) = justcx $ show n
+evalExpr cx (StringLiteral n) = justcx n
+
 evalTemplate tc cx = C.concat $ map (evalTemplateBlock cx) tc
 
 evalTemplateBlock cx (Text t) = t
-evalTemplateBlock cx (Slot k) = showCX $ fromMaybe (ContextValue C.empty) (cxpLookup k cx)
-evalTemplateBlock cx (Cond k bls) = case cxpLookup k cx of
+evalTemplateBlock cx (Slot k) = showCX $ fromMaybe (ContextValue C.empty) (evalExpr cx k)
+evalTemplateBlock cx (Cond k bls) = case evalExpr cx k of
                                       Just _ -> evalTemplate bls cx
                                       Nothing-> C.empty
-evalTemplateBlock cx (Loop k as bls) = case cxpLookup k cx of
+evalTemplateBlock cx (Loop k as bls) = case evalExpr cx k of
                                          Just val -> C.concat $ mapCL runLoop val
                                          Nothing  -> C.empty
     where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx 

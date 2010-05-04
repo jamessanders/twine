@@ -17,7 +17,10 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import System.FilePath
+
 import Text.RSTemplate.Parser.Types
+import Text.RSTemplate.Parser.Utils
+import Text.RSTemplate.ExprParser
 import qualified Data.ByteString.Char8 as C
 
 
@@ -84,7 +87,7 @@ stepParser = do c <- getChar
           substitute = do key <- fmap strip (dropTillChar '}' (C.pack ""))
                           dropC 
                           dropC 
-                          addBlock $ Slot (C.unpack key)
+                          addBlock $ Slot (parseExpr $ C.unpack key)
                           stepParser
 
           conditional = do tx <- fmap getTemplate get
@@ -92,7 +95,7 @@ stepParser = do c <- getChar
                            let ei  = findClosing "{?" "?}" tx
                            let tmp = C.take (ei - 1) tx
                            let psd = parseTemplate (jumpParam tmp)
-                           addBlock $ Cond (C.unpack v) psd
+                           addBlock $ Cond (parseExpr $ C.unpack v) psd
                            dropN (ei + 1)
                            stepParser
 
@@ -101,7 +104,7 @@ stepParser = do c <- getChar
                           let as = getLoopParamN tx
                           let ei = findClosing "{@" "@}" tx
                           let tmp = C.take (ei - 1) tx
-                          addBlock $ Loop (C.unpack k) (C.unpack as) (parseTemplate (jumpParam tmp))
+                          addBlock $ Loop (parseExpr $ C.unpack k) (C.unpack as) (parseTemplate (jumpParam tmp))
                           dropN (ei + 1)
                           stepParser
 
@@ -118,17 +121,8 @@ stepParser = do c <- getChar
           jumpParam = C.tail . C.dropWhile (/= '|') . C.tail . C.dropWhile (/= '|')
 
 
-findClosing open' close' text = findClosing' text 0 0
-   where
-    open  = C.pack open'
-    close = C.pack close'
-    findClosing' text i 0 = if i == 0 then findClosing' text i 1 else i
-    findClosing' x  i n   | C.length x == 1 = i + 1
-    findClosing' text i n = if open `C.isPrefixOf` text
-                              then findClosing' (C.tail text) (i+1) (n+1)
-                              else if close `C.isPrefixOf` text
-                                     then findClosing' (C.tail text) (i+1) (n-1)
-                                     else findClosing' (C.tail text) (i+1) n
+
+
 
 ------------------------------------------------------------------------
 

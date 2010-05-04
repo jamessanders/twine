@@ -11,7 +11,7 @@ import qualified Data.ByteString.Char8 as C
 data ContextItem a = ContextPairs [a]
                    | ContextValue C.ByteString
                    | ContextList [ContextItem a]
-                     deriving (Show)
+                     deriving (Show,Eq)
 
 data EvalState = EvalState { getDisplay :: C.ByteString }
 
@@ -54,9 +54,11 @@ instance ContextLookup [(String,ContextItem CX)] where
     ioCxLookup k a = return (cxLookup k a)
 
 data CX = forall a. (ContextLookup a) => CX a
+
 instance Show CX where
     show _ = "!CX!"
-
+instance Eq CX where
+    a == b = False
 
 class ToContext a where
     toContext :: a -> ContextItem CX
