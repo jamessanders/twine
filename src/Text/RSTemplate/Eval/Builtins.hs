@@ -48,13 +48,12 @@ mathOn f [Just (ContextValue a)
                                      then justcx $ show (read a' `f` read b')
                                      else error "math: Argumuent is not a number"
 
-
+myHead [Just (ContextList a)] = Just (head a)
 
 number = and . map isNumber
 
 boolcx True  = justcx "True"
 boolcx False = Nothing
-
 
 
 
@@ -72,4 +71,5 @@ builtins = [("id",myId)
            ,("subtract",mathOn (-))
            ,("add",mathOn (+))
            ,("enum",myEnum)
+           ,("head",myHead)
            ,("succ",mySucc)]
