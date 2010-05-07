@@ -47,15 +47,13 @@ instance ContextLookup (ContextItem CX) where
     ioCxLookup k (ContextPairs a) = ioCxLookup k a
 
 
-instance ContextLookup a => ContextLookup (C.ByteString,a) where
-    cxLookup k a | k == fst a = justcx (snd a)
+instance ContextLookup (C.ByteString,ContextItem CX) where
+    cxLookup k a | k == fst a = Just (snd a)
                  | otherwise = Nothing
 
  
-instance ContextLookup a =>  ContextLookup [(C.ByteString,a)] where
-    cxLookup k a   = case lookup k a of
-                       Just a -> justcx a
-                       Nothing-> Nothing
+instance ContextLookup [(C.ByteString,ContextItem CX)] where
+    cxLookup k a   = lookup k a
     ioCxLookup k a = return (cxLookup k a)
 
 instance ContextLookup EmptyContext where
@@ -82,11 +80,11 @@ instance ContextLookup a => ToContext a where
 instance ToContext a => ToContext [a] where
     toContext x = ContextList $ map toContext x
 
--- instance ToContext a => ToContext (C.ByteString,a) where
---      toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
+instance ToContext a => ToContext (C.ByteString,a) where
+      toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
 
--- instance ToContext a => ToContext [(C.ByteString,a)] where
---      toContext ls = foldl (<+>) (ContextPairs []) $ map toContext ls
+instance ToContext a => ToContext [(C.ByteString,a)] where
+      toContext ls = foldl (<+>) (ContextPairs []) $ map toContext ls
 
 
 context :: (ToContext a) => a -> ContextItem CX

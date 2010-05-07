@@ -31,7 +31,9 @@ myEq [a,b] = if a == b then boolcx True else boolcx False
 myZip [Just (ContextList a),Just (ContextList b)] = justcx [[x,y] | x <- a , y <- b]
 
 myRange [Just (ContextValue a),Just (ContextValue b)] = justcx $ map (C.pack . show) [read (C.unpack a) :: Int .. read (C.unpack b) - 1 :: Int]
+
 myEnum [Just (ContextList a)] = justcx $ map (C.pack . show) $ [0..length a - 1]
+myEnum _ = error "enum: not a list"
 
 myGetItem [Just (ContextList a)
           ,Just (ContextValue b)] = let b' = read $ C.unpack b in
