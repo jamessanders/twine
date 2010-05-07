@@ -88,7 +88,7 @@ stepParser = do c <- getChar
           substitute = do key <- fmap strip (dropTillChar '}' (C.pack ""))
                           dropC 
                           dropC 
-                          addBlock $ Slot (parseExpr $ C.unpack key)
+                          addBlock $ Slot (parseExpr key)
                           stepParser
 
           conditional = do tx <- fmap getTemplate get
@@ -96,7 +96,7 @@ stepParser = do c <- getChar
                            let ei  = findClosing "{?" "?}" tx
                            let tmp = C.take (ei - 1) tx
                            let psd = parseTemplate (jumpParam tmp)
-                           addBlock $ Cond (parseExpr $ C.unpack v) psd
+                           addBlock $ Cond (parseExpr v) psd
                            dropN (ei + 1)
                            stepParser
 
@@ -105,7 +105,7 @@ stepParser = do c <- getChar
                           let as = getLoopParamN tx
                           let ei = findClosing "{@" "@}" tx
                           let tmp = C.take (ei - 1) tx
-                          addBlock $ Loop (parseExpr $ C.unpack k) (C.unpack as) (parseTemplate (jumpParam tmp))
+                          addBlock $ Loop (parseExpr k) as (parseTemplate (jumpParam tmp))
                           dropN (ei + 1)
                           stepParser
 
@@ -120,7 +120,7 @@ stepParser = do c <- getChar
                             let ei  = findClosing "{|" "|}" tx
                             let tmp = C.take (ei - 1) tx
                             let (k,v) = C.break (== '=') tmp 
-                            addBlock $ Assign (C.unpack (strip k)) (parseExpr (C.unpack . strip . C.tail $ v))
+                            addBlock $ Assign (strip k) (parseExpr (strip . C.tail $ v))
                             dropN (ei + 1)
                             stepParser
 

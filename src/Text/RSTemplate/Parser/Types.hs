@@ -2,12 +2,12 @@ module Text.RSTemplate.Parser.Types where
 
 import qualified Data.ByteString.Char8 as C
 
-type Key  = String
-type Name = String 
+type Key  = C.ByteString
+type Name = C.ByteString 
 
 data Expr = Func Name [Expr] 
           | Var Name 
-          | StringLiteral String
+          | StringLiteral C.ByteString
           | NumberLiteral Integer
             deriving (Show,Read)
 

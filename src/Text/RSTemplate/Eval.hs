@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Text.RSTemplate.Eval (evalTemplate,split,mapCL,showCX) where
 
 import Text.RSTemplate.Parser.Types
@@ -26,7 +27,7 @@ mapCL f (ContextList x)  = map (\(a,b)->f b a) $ zip x [1..]
 mapCL f a@(ContextValue x) = [f 1 a]
 mapCL f _ = error "not a list of key/value pairs"
 
-cxpLookup k a = cxpLookup' (split '.' k) a
+cxpLookup k a = cxpLookup' (C.split '.' k) a
 cxpLookup' (x:xs) (ContextPairs c) = case cxLookup x c of
                                        Just a -> cxpLookup' xs a
                                        Nothing -> Nothing
@@ -35,9 +36,9 @@ cxpLookup' []     a = Just a
 
 evalExpr cx (Func n a) = case lookup n builtins of
                            Just f  -> f $ map (evalExpr cx) a
-                           Nothing -> error $ n ++ " is not a builtin function."
+                           Nothing -> error $ (C.unpack n) ++ " is not a builtin function."
 evalExpr cx (Var n) = cxpLookup n cx
-evalExpr cx (NumberLiteral n) = justcx $ show n
+evalExpr cx (NumberLiteral n) = justcx . C.pack . show  $ n
 evalExpr cx (StringLiteral n) = justcx n
 
 evalTemplate tc cx = C.concat . reverse $ walk cx tc []

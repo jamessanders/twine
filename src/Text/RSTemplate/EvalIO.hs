@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Text.RSTemplate.EvalIO (evalIOTemplate) where
 
 import Data.Maybe
@@ -7,7 +8,7 @@ import Text.RSTemplate.Parser.Types
 import Text.RSTemplate.Eval.Builtins
 import qualified Data.ByteString.Char8 as C
 
-ioCxpLookup k a = ioCxpLookup' (split '.' k) a
+ioCxpLookup k a = ioCxpLookup' (C.split '.' k) a
 
 ioCxpLookup' (x:xs) (ContextPairs c) = do l <- ioCxLookup x c
                                           case l of
@@ -20,10 +21,10 @@ ioCxpLookup' []     a = return $ Just a
 ievalExpr cx (Func n a) = case lookup n builtins of
                            Just f  -> do x <- mapM (ievalExpr cx) a
                                          return (f x)
-                           Nothing -> error $ n ++ " is not a builtin function."
+                           Nothing -> error $ (C.unpack n) ++ " is not a builtin function."
 
 ievalExpr cx (Var n) = ioCxpLookup n cx
-ievalExpr cx (NumberLiteral n) = return $ justcx $ show n
+ievalExpr cx (NumberLiteral n) = return . justcx . C.pack . show $ n
 ievalExpr cx (StringLiteral n) = return $ justcx n
 
 

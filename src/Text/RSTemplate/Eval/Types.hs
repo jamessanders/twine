@@ -1,7 +1,9 @@
 {-# LANGUAGE ExistentialQuantification, 
   TypeSynonymInstances, 
+  IncoherentInstances,
   FlexibleInstances, 
   OverlappingInstances, 
+  OverloadedStrings,
   UndecidableInstances  #-}
 
 module Text.RSTemplate.Eval.Types where
@@ -13,11 +15,13 @@ data ContextItem a = ContextPairs [a]
                    | ContextList [ContextItem a]
                      deriving (Show,Eq)
 
+data EmptyContext = EmptyContext
+
 data EvalState = EvalState { getDisplay :: C.ByteString }
 
 class ContextLookup a where
-    cxLookup   :: String -> a -> Maybe (ContextItem CX)
-    ioCxLookup :: String -> a -> IO (Maybe (ContextItem CX))
+    cxLookup   :: C.ByteString -> a -> Maybe (ContextItem CX)
+    ioCxLookup :: C.ByteString -> a -> IO (Maybe (ContextItem CX))
 
     cxLookup k a   = Nothing
     ioCxLookup k a = return (cxLookup k a)
@@ -25,13 +29,6 @@ class ContextLookup a where
 instance ContextLookup CX where
     cxLookup k (CX a)   = cxLookup k a
     ioCxLookup k (CX a) = ioCxLookup k a
-
--- instance ContextLookup [CX] where
---     cxLookup k []     = Nothing
---     cxLookup k (x:xs) = case cxLookup k x of
---                           Just a  -> Just a
---                           Nothing -> cxLookup k xs
---     ioCxLookup k a = return (cxLookup k a)
 
 instance ContextLookup a => ContextLookup [a] where
     cxLookup k []     = Nothing
@@ -48,13 +45,23 @@ instance ContextLookup a => ContextLookup [a] where
 instance ContextLookup (ContextItem CX) where
     cxLookup k (ContextPairs a)   = cxLookup k a
     ioCxLookup k (ContextPairs a) = ioCxLookup k a
+
+
+instance ContextLookup a => ContextLookup (C.ByteString,a) where
+    cxLookup k a | k == fst a = justcx (snd a)
+                 | otherwise = Nothing
+
  
-instance ContextLookup [(String,ContextItem CX)] where
-    cxLookup k a = lookup k a
+instance ContextLookup a =>  ContextLookup [(C.ByteString,a)] where
+    cxLookup k a   = case lookup k a of
+                       Just a -> justcx a
+                       Nothing-> Nothing
     ioCxLookup k a = return (cxLookup k a)
 
-data CX = forall a. (ContextLookup a) => CX a
+instance ContextLookup EmptyContext where
+    cxLookup _ _ = Nothing
 
+data CX = forall a. (ContextLookup a) => CX a
 instance Show CX where
     show _ = "!CX!"
 instance Eq CX where
@@ -75,14 +82,25 @@ instance ContextLookup a => ToContext a where
 instance ToContext a => ToContext [a] where
     toContext x = ContextList $ map toContext x
 
-instance ToContext a => ToContext (String,a) where
-    toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
+-- instance ToContext a => ToContext (C.ByteString,a) where
+--      toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
 
-instance ToContext a => ToContext [(String,a)] where
-    toContext ls = foldl (<+>) (ContextPairs []) $ map toContext ls
+-- instance ToContext a => ToContext [(C.ByteString,a)] where
+--      toContext ls = foldl (<+>) (ContextPairs []) $ map toContext ls
+
+
+context :: (ToContext a) => a -> ContextItem CX
+context = toContext
+
+--simpleContext
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 (<+>) = mergeCXP
+emptyContext = toContext EmptyContext
+
+foldCX = foldl (<+>) emptyContext
+
+
 
 justcx :: (ToContext a) => a -> Maybe (ContextItem CX)
 justcx = Just . toContext

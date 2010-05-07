@@ -1,5 +1,5 @@
 name:                rstemplate
-version:             0.7.3
+version:             0.8.1
 synopsis:            very simple template system
 description:         very simple template system
 category:            Data
@@ -28,4 +28,4 @@ Library
                         ,Text.RSTemplate.ExprParser
 
 
-     ghc-options:       -O2
+     ghc-options:       -O2 -fvia-C
