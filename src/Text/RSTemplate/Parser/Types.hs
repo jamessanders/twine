@@ -9,7 +9,7 @@ data Expr = Func Name [Expr]
           | Var Name 
           | StringLiteral C.ByteString
           | NumberLiteral Integer
-            deriving (Show,Read)
+            deriving (Show,Read,Eq)
 
 data TemplateCode = Text C.ByteString 
                   | Slot Expr

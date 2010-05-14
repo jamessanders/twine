@@ -20,7 +20,7 @@ import System.FilePath
 
 import Text.RSTemplate.Parser.Types
 import Text.RSTemplate.Parser.Utils
-import Text.RSTemplate.ExprParser
+import Text.RSTemplate.SExprParser
 import qualified Data.ByteString.Char8 as C
 
 

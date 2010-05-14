@@ -17,6 +17,7 @@ Library
                         , mtl >= 1.1.0.2
                         , bytestring >= 0.9.1.5
                         , filepath >= 1.1.0.3
+                        , parsec >= 3.1.0                       
      Exposed-modules:   Text.RSTemplate
      Other-modules:     Text.RSTemplate.Parser
                         ,Text.RSTemplate.Parser.Types
