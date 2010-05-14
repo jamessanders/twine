@@ -2,6 +2,7 @@
 module Text.RSTemplate.Eval.Builtins (builtins) where
 
 import Data.Char
+import Data.List
 import Text.RSTemplate.Eval.Types
 import Control.Exception (assert)
 import qualified Data.ByteString.Char8 as C
@@ -34,6 +35,8 @@ myRange [Just (ContextValue a),Just (ContextValue b)] = justcx $ map (C.pack . s
 
 myEnum [Just (ContextList a)] = justcx $ map (C.pack . show) $ [0..length a - 1]
 myEnum _ = error "enum: not a list"
+
+myElem [Just x, Just (ContextList y)] = boolcx (x `elem` y)
 
 myGetItem [Just (ContextList a)
           ,Just (ContextValue b)] = let b' = read $ C.unpack b in
@@ -80,4 +83,5 @@ builtins = [("id",myId)
            ,("add",mathOn (+))
            ,("enum",myEnum)
            ,("head",myHead)
+           ,("elem?",myElem)
            ,("succ",mySucc)]
