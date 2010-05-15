@@ -1,13 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Text.RSTemplate.SExprParser (parseExpr) where
-import Text.Parsec
-import qualified Data.Char as C
+
 import Control.Applicative ((<$>))
-import qualified Data.ByteString.Char8 as BS
+import Data.ByteString.Char8 hiding (filter,tail)
+import Prelude hiding (head)
+import Text.Parsec
 import Text.RSTemplate.Parser.Types
+import qualified Data.Char as C
+import qualified Prelude
 
 mkNumber = NumberLiteral . read
-mkVar    = Var . BS.pack
+mkVar    = Var . pack
 
 getName (Var n) = n
              
@@ -22,8 +25,8 @@ block = do manyTill space (lookAhead openP)
 valid = letter <|> oneOf "#+-*$/?." <|> digit
 
 sexpr = do openP 
-           x <- filter (/= Var (BS.pack "")) <$> manyTill (atom <|> sexpr) closeP
-           return (Func (getName $ head x) (tail x))
+           x <- filter (/= Var (pack "")) <$> manyTill (atom <|> sexpr) closeP
+           return (Func (getName $ Prelude.head x) (tail x))
 
 atom = do n <- lookAhead $ choice [char '"'
                                   ,digit
@@ -36,19 +39,19 @@ atom = do n <- lookAhead $ choice [char '"'
             
 sstring = do char '"'
              x <- manyTill (anyChar) (char '"') 
-             return . StringLiteral. BS.pack $ x
+             return . StringLiteral. pack $ x
 
 var f = do x <- manyTill (valid) (lookAhead closeP <|> space)
            return (f x)
 
-parseSexpr :: String -> Either ParseError [Expr]
-parseSexpr x = parse parser x x
+parseSexpr :: ByteString -> Either ParseError [Expr]
+parseSexpr x = parse parser (unpack x) x
 
-parseExpr x = let x' = if BS.head x /= '(' then "(" `BS.append` x `BS.append` ")" else x
-              in case parseSexpr (BS.unpack x') of
+parseExpr x = let x' = if head x /= '(' then "(" `append` x `append` ")" else x
+              in case parseSexpr x' of
                    Left  a -> error (show a)
                    Right a -> case a of 
                                 [] -> error $ "Parser failed: " ++ (show a)
-                                b  -> check $ head b
+                                b  -> check $ Prelude.head b
               where check (Func n []) = Func "id" [Var n]
                     check x = x
