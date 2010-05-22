@@ -50,7 +50,7 @@ following and that we have hooked it into out template context.
              ,{ name: "Greg", age: 29, occupation: "programmer"}] } 
 
 Keep in mind one would of course need to parse the json into Haskell and create an instance
-of the `toContext` typeclass in or for this to work.     
+of the `toContext` typeclass in order for this to work.     
      
 Now we could display the above with the following template.
 
