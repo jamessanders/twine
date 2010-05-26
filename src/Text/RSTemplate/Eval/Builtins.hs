@@ -56,6 +56,10 @@ mathOn f [Just (ContextValue a)
 
 myHead [Just (ContextList a)] = Just (head a)
 
+myType [Just (ContextList _)]  = justcx $ C.pack "<List>"
+myType [Just (ContextPairs _)] = justcx $ C.pack "<Dict>"
+myType [Just (ContextValue _)] = justcx $ C.pack "<Value>"
+
 number = and . map isNumber
 
 boolcx True  = justcx ("True" :: C.ByteString)
@@ -65,6 +69,7 @@ type BuiltinFunc = [Maybe (ContextItem CX)] -> Maybe (ContextItem CX)
 
 builtins :: [(C.ByteString,BuiltinFunc)]
 builtins = [("id",myId)
+           ,("type",myType)
            ,("not",myNot)
            ,("upper",myUpper)
            ,("lower",myLower)
