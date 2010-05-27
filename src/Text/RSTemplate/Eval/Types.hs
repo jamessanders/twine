@@ -4,16 +4,23 @@
   FlexibleInstances, 
   OverlappingInstances, 
   OverloadedStrings,
+  GeneralizedNewtypeDeriving,
   UndecidableInstances  #-}
 
 module Text.RSTemplate.Eval.Types where
 
 import qualified Data.ByteString.Char8 as C
+import Control.Monad.Writer
+import Data.Monoid
 
 data ContextItem a = ContextPairs [a]
                    | ContextValue C.ByteString
                    | ContextList [ContextItem a]
                      deriving (Show,Eq)
+
+instance Monoid (ContextItem a) where
+    mappend = (<+>)
+    mempty  = ContextList []
 
 data EmptyContext = EmptyContext
 
@@ -93,12 +100,23 @@ context = toContext
 --simpleContext
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
+mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
 (<+>) = mergeCXP
 emptyContext = toContext EmptyContext
 
 foldCX = foldl (<+>) emptyContext
 
-
-
 justcx :: (ToContext a) => a -> Maybe (ContextItem CX)
 justcx = Just . toContext
+
+-- Context Writer Monad
+
+newtype ContextWriter a b = CW { 
+      runContextWriter :: Writer (ContextItem a) b
+    } deriving (Monad,MonadWriter (ContextItem a))
+
+execCXW = execWriter . runContextWriter
+cxw = execCXW
+
+set :: ToContext a => String -> a -> ContextWriter CX ()
+set k v = tell $ context (C.pack k, v)
