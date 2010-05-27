@@ -22,7 +22,7 @@ parser = many block
 block = do manyTill space (lookAhead openP)
            sexpr
 
-valid = letter <|> oneOf "#+-*$/?." <|> digit
+valid = letter <|> oneOf "#+-*$/?._" <|> digit
 
 sexpr = do openP 
            x <- filter (/= Var (pack "")) <$> manyTill (atom <|> sexpr) closeP
