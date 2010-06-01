@@ -3,6 +3,9 @@
   , FlexibleInstances
   , ExistentialQuantification
   , GeneralizedNewtypeDeriving 
+  , UndecidableInstances
+  , FunctionalDependencies
+  , FlexibleContexts
   , OverloadedStrings #-}
 
 module Text.RSTemplate.Eval.Types where
@@ -10,7 +13,7 @@ module Text.RSTemplate.Eval.Types where
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
 import Data.Monoid
-
+import Control.Monad.Identity 
 data ContextItem a = ContextPairs [a]
                    | ContextValue C.ByteString
                    | ContextList [ContextItem a]
@@ -33,8 +36,25 @@ instance (Monad m) => ContextLookup m (CX m) where
     cxLookup k (CX a) = cxLookup k a
 
 data CX m = forall a. (ContextLookup m a) => CX a
-instance (Monad m) => Show (CX m) where
-    show = const "!CX!"
+instance (Monad m) => Show (CX m) where show = const "!CX!"
+
+cx :: (ContextLookup IO a) => a -> CX IO
+cx a = CX a
+
+class ToContext a where
+    toContext :: (Monad m, ContextLookup m a) => a -> ContextItem (CX m)
+
+instance (Monad m,ContextLookup m a) => ToContext a where
+    toContext a = ContextPairs [CX a]
+
+doLookup _ (ContextPairs []) = return Nothing
+doLookup k (ContextPairs (x:xs)) = do
+  s <- cxLookup k x
+  case s of
+    Just x  -> return $ Just x
+    Nothing -> doLookup k (ContextPairs xs)
+               
+
 -- simpleContext
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
