@@ -5,6 +5,8 @@
   OverlappingInstances, 
   OverloadedStrings,
   GeneralizedNewtypeDeriving,
+  MultiParamTypeClasses,
+  FunctionalDependencies,
   UndecidableInstances  #-}
 
 module Text.RSTemplate.Eval.Types where
@@ -24,90 +26,33 @@ instance Monoid (ContextItem a) where
 
 data EmptyContext = EmptyContext
 
-data EvalState = EvalState { getDisplay :: C.ByteString }
+class (Monad m) => ContextLookup m a | a -> m where
+    cxLookup :: C.ByteString -> a -> m (Maybe (ContextItem a))
+    cxLookup _ _ = return Nothing
 
-class ContextLookup a where
-    cxLookup   :: C.ByteString -> a -> Maybe (ContextItem CX)
-    ioCxLookup :: C.ByteString -> a -> IO (Maybe (ContextItem CX))
+instance (Monad m) => ContextLookup m EmptyContext where
+    cxLookup _ _ = return Nothing
 
-    cxLookup k a   = Nothing
-    ioCxLookup k a = return (cxLookup k a)
+instance (Monad m1,Monad m2) => ContextLookup m1 (CX m2) where
+    cxLookup k (CX a) = cxLookup k a
 
-instance ContextLookup CX where
-    cxLookup k (CX a)   = cxLookup k a
-    ioCxLookup k (CX a) = ioCxLookup k a
+data CX m = forall a. (ContextLookup m a) => CX a
 
-instance ContextLookup a => ContextLookup [a] where
-    cxLookup k []     = Nothing
-    cxLookup k (x:xs) = case cxLookup k x of
-                          Just a  -> Just a
-                          Nothing -> cxLookup k xs
-
-    ioCxLookup k []     = return $ Nothing
-    ioCxLookup k (x:xs) = do look <- ioCxLookup k x
-                             case look of
-                               Just a  -> return $ Just a
-                               Nothing -> ioCxLookup k xs
-    
-instance ContextLookup (ContextItem CX) where
-    cxLookup k (ContextPairs a)   = cxLookup k a
-    ioCxLookup k (ContextPairs a) = ioCxLookup k a
-
-
-instance ContextLookup (C.ByteString,ContextItem CX) where
-    cxLookup k a | k == fst a = Just (snd a)
-                 | otherwise = Nothing
-
- 
-instance ContextLookup [(C.ByteString,ContextItem CX)] where
-    cxLookup k a   = lookup k a
-    ioCxLookup k a = return (cxLookup k a)
-
-instance ContextLookup EmptyContext where
-    cxLookup _ _ = Nothing
-
-data CX = forall a. (ContextLookup a) => CX a
-instance Show CX where
-    show _ = "!CX!"
-instance Eq CX where
-    a == b = False
-
-class ToContext a where
-    toContext :: a -> ContextItem CX
-
-instance ToContext C.ByteString where
-    toContext s = ContextValue s
-
-instance ToContext String where
-    toContext s = toContext (C.pack s)
-
-instance ContextLookup a => ToContext a where
-    toContext x = ContextPairs [CX x]
-
-instance ToContext a => ToContext [a] where
-    toContext x = ContextList $ map toContext x
-
-instance ToContext a => ToContext (C.ByteString,a) where
-      toContext (k,v) = ContextPairs [CX [(k,toContext v)]]
-
-instance ToContext a => ToContext [(C.ByteString,a)] where
-      toContext ls = foldl (<+>) (ContextPairs []) $ map toContext ls
-
-
-context :: (ToContext a) => a -> ContextItem CX
-context = toContext
-
---simpleContext
+-- simpleContext
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
 (<+>) = mergeCXP
-emptyContext = toContext EmptyContext
 
-foldCX = foldl (<+>) emptyContext
+-- emptyContext :: (Monad m) => m (ContextItem EmptyContext)
+-- emptyContext = toContext EmptyContext
 
-justcx :: (ToContext a) => a -> Maybe (ContextItem CX)
-justcx = Just . toContext
+-- foldCX = foldl (<+>) emptyContext
+
+-- justcx = Just . toContext
+
+justcx :: (Monad m) => C.ByteString -> m (Maybe (ContextItem a))
+justcx = return . Just . ContextValue 
 
 -- Context Writer Monad
 
@@ -118,5 +63,17 @@ newtype ContextWriter a b = CW {
 execCXW = execWriter . runContextWriter
 cxw = execCXW
 
-set :: ToContext a => String -> a -> ContextWriter CX ()
-set k v = tell $ context (C.pack k, v)
+--set :: ToContext a => String -> a -> ContextWriter a ()
+--set k v = tell $ toContext (C.pack k, v)
+
+------------------------------------------------------------------------
+
+data User = User { getName :: String 
+                 , getAge  :: Int }
+            deriving (Show,Read)
+
+instance (Monad m) => ContextLookup m User where
+    cxLookup "name" = justcx . C.pack . getName
+    cxLookup "age"  = justcx . C.pack . show . getAge
+    cxLookup _      = return . const Nothing
+
