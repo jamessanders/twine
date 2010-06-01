@@ -1,13 +1,9 @@
-{-# LANGUAGE ExistentialQuantification, 
-  TypeSynonymInstances, 
-  IncoherentInstances,
-  FlexibleInstances, 
-  OverlappingInstances, 
-  OverloadedStrings,
-  GeneralizedNewtypeDeriving,
-  MultiParamTypeClasses,
-  FunctionalDependencies,
-  UndecidableInstances  #-}
+{-#LANGUAGE MultiParamTypeClasses
+  , TypeSynonymInstances
+  , FlexibleInstances
+  , ExistentialQuantification
+  , GeneralizedNewtypeDeriving 
+  , OverloadedStrings #-}
 
 module Text.RSTemplate.Eval.Types where
 
@@ -26,18 +22,19 @@ instance Monoid (ContextItem a) where
 
 data EmptyContext = EmptyContext
 
-class (Monad m) => ContextLookup m a | a -> m where
-    cxLookup :: C.ByteString -> a -> m (Maybe (ContextItem a))
+class (Monad m) => ContextLookup m a  where
+    cxLookup :: C.ByteString -> a -> m (Maybe (ContextItem (CX m)))
     cxLookup _ _ = return Nothing
 
 instance (Monad m) => ContextLookup m EmptyContext where
     cxLookup _ _ = return Nothing
 
-instance (Monad m1,Monad m2) => ContextLookup m1 (CX m2) where
+instance (Monad m) => ContextLookup m (CX m) where
     cxLookup k (CX a) = cxLookup k a
 
 data CX m = forall a. (ContextLookup m a) => CX a
-
+instance (Monad m) => Show (CX m) where
+    show = const "!CX!"
 -- simpleContext
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
