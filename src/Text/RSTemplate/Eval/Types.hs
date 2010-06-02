@@ -11,17 +11,18 @@
 module Text.RSTemplate.Eval.Types where
 
 import qualified Data.ByteString.Char8 as C
+import Data.ByteString.Char8 (ByteString)
 import Control.Monad.Writer
 import Data.Monoid
 import Control.Monad.Identity 
 
 data ContextItem m = ContextPairs [Context m]
-                   | ContextValue (Context m)
+                   | ContextValue ByteString
                    | ContextList [ContextItem m]
 
 instance (Monad m) => Show (ContextItem m) where
     show (ContextPairs _) = "< ContextPairs >"
-    show (ContextValue (Final x)) = C.unpack x
+    show (ContextValue x) = C.unpack x
     show (ContextList  x) = "< ContextList >"
 
 instance Monoid (ContextItem a) where
@@ -30,39 +31,19 @@ instance Monoid (ContextItem a) where
 
 data EmptyContext = EmptyContext
 
-
--- TODO: Just some notes, delete this later.
-
--- data User = User { getUserName :: String, getUserAge :: Int }
--- data Pet  = Pet  { getPetName :: String, getPetWeight :: Int }
-
--- data Context m = Context { cxLookup :: String -> m (Maybe String) }
-
--- class ContextLookup m a where 
---     mkCX :: String -> a -> m (Maybe String)
---     cx :: a -> Context m
---     cx a = Context (flip mkCX a)
-
--- instance (Monad m) => ContextLookup m User where
---     mkCX "name" = return . Just . getUserName
-
--- instance (Monad m) => ContextLookup m Pet where
---     mkCX "name" = return . Just . getPetName 
-
-data Context m = Context { lookupInContext :: C.ByteString -> m (Maybe (ContextItem m)) }
-               | Final C.ByteString
+newtype Context m = Context { lookupInContext :: ByteString -> m (Maybe (ContextItem m)) }
 
 class (Monad m) => ContextLookup m a  where
-    cxLookup  :: C.ByteString -> a -> m (Maybe (ContextItem m))
-    toContext :: a -> Context m
-    toContext a = Context (flip cxLookup a)
+    cxLookup  :: ByteString -> a -> m (Maybe (ContextItem m))
+    toContext :: a -> ContextItem m
+    toContext a = ContextPairs [Context (flip cxLookup a)]
 
 instance (Monad m) => ContextLookup m EmptyContext where
     cxLookup _ _ = return Nothing
 
-instance (Monad m) => ContextLookup m C.ByteString where
+instance (Monad m) => ContextLookup m ByteString where
     cxLookup _ _ = return Nothing
-    toContext a = Final a
+    toContext a = ContextValue a
 
 doLookup _ (ContextPairs []) = return Nothing
 doLookup k (ContextPairs (x:xs)) = do
@@ -77,26 +58,29 @@ mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
 (<+>) = mergeCXP
 
-emptyContext :: (Monad m) => Context m
+emptyContext :: (Monad m) => ContextItem m
 emptyContext = toContext EmptyContext
 
---foldCX = foldl (<+>) emptyContext
+foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
+foldCX = foldl (<+>) emptyContext
 
---justcx :: (Monad m) => m (ContextItem m)
---justcx = return . Just . ContextValue . toContext
+justcx :: (Monad m, ContextLookup m a) => a -> m (Maybe (ContextItem m))
+justcx = return . Just . toContext
 
 
 -- Context Writer Monad
 
--- newtype ContextWriter a b = CW { 
---       runContextWriter :: Writer ContextItem b
---     } deriving (Monad,MonadWriter ContextItem)
+newtype ContextWriter m a = CW { 
+      runContextWriter :: Writer (ContextItem m) a
+    } deriving (Monad,MonadWriter (ContextItem m))
 
--- execCXW = execWriter . runContextWriter
--- cxw = execCXW
+execCXW = execWriter . runContextWriter
+cxw = execCXW
 
---set :: ToContext a => String -> a -> ContextWriter a ()
---set k v = tell $ toContext (C.pack k, v)
+set :: (MonadWriter (ContextItem m1) m,
+        ContextLookup m1 (ByteString, t)) =>
+       String -> t -> m ()
+set k v = tell $ toContext (C.pack k, v)
 
 ------------------------------------------------------------------------
 
@@ -105,7 +89,7 @@ data User = User { getName :: String
             deriving (Show,Read)
 
 instance (Monad m) => ContextLookup m User where
-    cxLookup "name" = return . Just . ContextValue . Final . C.pack . getName
-    cxLookup "age"  = return . Just . ContextValue . Final . C.pack . show . getAge
+    cxLookup "name" = justcx . C.pack . getName
+    cxLookup "age"  = justcx . C.pack . show . getAge
     cxLookup _      = return . const Nothing
 
