@@ -25,6 +25,27 @@ instance Monoid (ContextItem a) where
 
 data EmptyContext = EmptyContext
 
+
+-- TODO: Just some notes, delete this later.
+
+-- data User = User { getUserName :: String, getUserAge :: Int }
+-- data Pet  = Pet  { getPetName :: String, getPetWeight :: Int }
+
+-- data Context m = Context { cxLookup :: String -> m (Maybe String) }
+
+-- class ContextLookup m a where 
+--     mkCX :: String -> a -> m (Maybe String)
+--     cx :: a -> Context m
+--     cx a = Context (flip mkCX a)
+
+-- instance (Monad m) => ContextLookup m User where
+--     mkCX "name" = return . Just . getUserName
+
+-- instance (Monad m) => ContextLookup m Pet where
+--     mkCX "name" = return . Just . getPetName 
+
+-- test "name" = return . Just . getUserName 
+
 class (Monad m) => ContextLookup m a  where
     cxLookup :: C.ByteString -> a -> m (Maybe (ContextItem (CX m)))
     cxLookup _ _ = return Nothing
