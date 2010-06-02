@@ -14,10 +14,15 @@ import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
 import Data.Monoid
 import Control.Monad.Identity 
-data ContextItem a = ContextPairs [a]
-                   | ContextValue C.ByteString
-                   | ContextList [ContextItem a]
-                     deriving (Show,Eq)
+
+data ContextItem m = ContextPairs [Context m]
+                   | ContextValue (Context m)
+                   | ContextList [ContextItem m]
+
+instance (Monad m) => Show (ContextItem m) where
+    show (ContextPairs _) = "< ContextPairs >"
+    show (ContextValue (Final x)) = C.unpack x
+    show (ContextList  x) = "< ContextList >"
 
 instance Monoid (ContextItem a) where
     mappend = (<+>)
@@ -44,29 +49,20 @@ data EmptyContext = EmptyContext
 -- instance (Monad m) => ContextLookup m Pet where
 --     mkCX "name" = return . Just . getPetName 
 
--- test "name" = return . Just . getUserName 
+data Context m = Context { lookupInContext :: C.ByteString -> m (Maybe (ContextItem m)) }
+               | Final C.ByteString
 
 class (Monad m) => ContextLookup m a  where
-    cxLookup :: C.ByteString -> a -> m (Maybe (ContextItem (CX m)))
-    cxLookup _ _ = return Nothing
+    cxLookup  :: C.ByteString -> a -> m (Maybe (ContextItem m))
+    toContext :: a -> Context m
+    toContext a = Context (flip cxLookup a)
 
 instance (Monad m) => ContextLookup m EmptyContext where
     cxLookup _ _ = return Nothing
 
-instance (Monad m) => ContextLookup m (CX m) where
-    cxLookup k (CX a) = cxLookup k a
-
-data CX m = forall a. (ContextLookup m a) => CX a
-instance (Monad m) => Show (CX m) where show = const "!CX!"
-
-cx :: (ContextLookup IO a) => a -> CX IO
-cx a = CX a
-
-class ToContext a where
-    toContext :: (Monad m, ContextLookup m a) => a -> ContextItem (CX m)
-
-instance (Monad m,ContextLookup m a) => ToContext a where
-    toContext a = ContextPairs [CX a]
+instance (Monad m) => ContextLookup m C.ByteString where
+    cxLookup _ _ = return Nothing
+    toContext a = Final a
 
 doLookup _ (ContextPairs []) = return Nothing
 doLookup k (ContextPairs (x:xs)) = do
@@ -75,31 +71,29 @@ doLookup k (ContextPairs (x:xs)) = do
     Just x  -> return $ Just x
     Nothing -> doLookup k (ContextPairs xs)
                
-
 -- simpleContext
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
 (<+>) = mergeCXP
 
--- emptyContext :: (Monad m) => m (ContextItem EmptyContext)
--- emptyContext = toContext EmptyContext
+emptyContext :: (Monad m) => Context m
+emptyContext = toContext EmptyContext
 
--- foldCX = foldl (<+>) emptyContext
+--foldCX = foldl (<+>) emptyContext
 
--- justcx = Just . toContext
+--justcx :: (Monad m) => m (ContextItem m)
+--justcx = return . Just . ContextValue . toContext
 
-justcx :: (Monad m) => C.ByteString -> m (Maybe (ContextItem a))
-justcx = return . Just . ContextValue 
 
 -- Context Writer Monad
 
-newtype ContextWriter a b = CW { 
-      runContextWriter :: Writer (ContextItem a) b
-    } deriving (Monad,MonadWriter (ContextItem a))
+-- newtype ContextWriter a b = CW { 
+--       runContextWriter :: Writer ContextItem b
+--     } deriving (Monad,MonadWriter ContextItem)
 
-execCXW = execWriter . runContextWriter
-cxw = execCXW
+-- execCXW = execWriter . runContextWriter
+-- cxw = execCXW
 
 --set :: ToContext a => String -> a -> ContextWriter a ()
 --set k v = tell $ toContext (C.pack k, v)
@@ -111,7 +105,7 @@ data User = User { getName :: String
             deriving (Show,Read)
 
 instance (Monad m) => ContextLookup m User where
-    cxLookup "name" = justcx . C.pack . getName
-    cxLookup "age"  = justcx . C.pack . show . getAge
+    cxLookup "name" = return . Just . ContextValue . Final . C.pack . getName
+    cxLookup "age"  = return . Just . ContextValue . Final . C.pack . show . getAge
     cxLookup _      = return . const Nothing
 
