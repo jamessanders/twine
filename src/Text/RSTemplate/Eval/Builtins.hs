@@ -27,11 +27,16 @@ myOdd  [Just (ContextValue x)] = boolcx . odd  . read . C.unpack $ x
 myNot [Just _]  = Nothing
 myNot [Nothing] = boolcx True
 
-myEq [a,b] = if a == b then boolcx True else boolcx False
+myEq [Just (ContextValue a)
+     ,Just (ContextValue b)] = if a == b 
+                               then boolcx True 
+                               else boolcx False
 
-myZip [Just (ContextList a),Just (ContextList b)] = justcx [[x,y] | x <- a , y <- b]
+myZip [Just (ContextList a),Just (ContextList b)] = 
+    justcx [[x,y] | x <- a , y <- b]
 
-myRange [Just (ContextValue a),Just (ContextValue b)] = justcx $ map (C.pack . show) [read (C.unpack a) :: Int .. read (C.unpack b) - 1 :: Int]
+myRange [Just (ContextValue a),Just (ContextValue b)] = 
+    justcx $ map (C.pack . show) [read (C.unpack a) :: Int .. read (C.unpack b) - 1 :: Int]
 
 myEnum [Just (ContextList a)] = justcx $ map (C.pack . show) $ [0..length a - 1]
 myEnum _ = error "enum: not a list"
@@ -65,9 +70,9 @@ number = and . map isNumber
 boolcx True  = justcx ("True" :: C.ByteString)
 boolcx False = Nothing
 
-type BuiltinFunc = [Maybe (ContextItem CX)] -> Maybe (ContextItem CX)
+type BuiltinFunc m = [Maybe (ContextItem m)] -> Maybe (ContextItem m)
 
-builtins :: [(C.ByteString,BuiltinFunc)]
+builtins :: (Monad m) => [(C.ByteString,BuiltinFunc m)]
 builtins = [("id",myId)
            ,("type",myType)
            ,("not",myNot)
@@ -80,13 +85,13 @@ builtins = [("id",myId)
            ,("even?",myEven)
            ,("odd",myOdd)
            ,("odd?",myOdd)
-           ,("range",myRange)
-           ,("zip",myZip)
+           -- ,("range",myRange)
+           -- ,("zip",myZip)
            ,("$",myGetItem)
            ,("item",myGetItem)
            ,("subtract",mathOn (-))
            ,("add",mathOn (+))
-           ,("enum",myEnum)
+           --,("enum",myEnum)
            ,("head",myHead)
            ,("elem?",myElem)
            ,("succ",mySucc)]

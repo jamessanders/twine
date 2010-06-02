@@ -28,20 +28,13 @@ eval (Slot x) = do
     Just (ContextValue x) -> return x
     Nothing -> return (C.pack "")
 
-evalExpr :: Expr -> Stack (Maybe (ContextItem CX))
+evalExpr :: (Monad m) => Expr -> Stack (Maybe (ContextItem m))
 evalExpr (Func n a) = do 
   cx <- get
   case lookup n builtins of
     Just f  -> fmap f $ mapM (evalExpr) a
     Nothing -> error $ (C.unpack n) ++ " is not a builtin function."
-evalExpr (Var n) = get >>= return . cxpLookup n 
+evalExpr (Var n) = get >>= return . doLookup n 
 evalExpr (NumberLiteral n)  = return . justcx . C.pack . show  $ n
 evalExpr (StringLiteral n) = return . justcx $ n
 
-cxpLookup k a = cxpLookup' (C.split '.' k) a
-cxpLookup' (x:xs) (ContextPairs c) = 
-    case cxLookup x c of
-      Just a -> cxpLookup' xs a
-      Nothing -> Nothing
-cxpLookup' (x:xs) _ = Nothing
-cxpLookup' []     a = Just a

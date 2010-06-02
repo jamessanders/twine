@@ -20,18 +20,19 @@ data ContextItem m = ContextPairs [Context m]
                    | ContextValue ByteString
                    | ContextList [ContextItem m]
 
-instance (Monad m) => Show (ContextItem m) where
-    show (ContextPairs _) = "< ContextPairs >"
-    show (ContextValue x) = C.unpack x
-    show (ContextList  x) = "< ContextList >"
+instance (Monad m) => Eq (ContextItem m) where
+    (ContextValue x) == (ContextValue y) = x == y
+    (ContextList  x) == (ContextList y)  = x == y
+    _ == _ = error "Unable to determine equality."
 
-instance Monoid (ContextItem a) where
-    mappend = (<+>)
-    mempty  = ContextList []
+instance (Monad m) => Show (ContextItem m) where
+    show (ContextPairs _) = "<ContextPairs>"
+    show (ContextValue x) = C.unpack x
+    show (ContextList  _) = "<ContextList>"
 
 data EmptyContext = EmptyContext
 
-newtype Context m = Context { lookupInContext :: ByteString -> m (Maybe (ContextItem m)) }
+newtype Context m = Context { getContext :: ByteString -> m (Maybe (ContextItem m)) }
 
 class (Monad m) => ContextLookup m a  where
     cxLookup  :: ByteString -> a -> m (Maybe (ContextItem m))
@@ -45,14 +46,16 @@ instance (Monad m) => ContextLookup m ByteString where
     cxLookup _ _ = return Nothing
     toContext a = ContextValue a
 
-doLookup _ (ContextPairs []) = return Nothing
-doLookup k (ContextPairs (x:xs)) = do
-  s <- cxLookup k x
-  case s of
-    Just x  -> return $ Just x
-    Nothing -> doLookup k (ContextPairs xs)
-               
 -- simpleContext
+
+foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
+foldCX = foldl (<+>) emptyContext
+
+justcx :: (Monad m, ContextLookup m a) => a -> (Maybe (ContextItem m))
+justcx = Just . toContext
+
+
+-- Context Writer Monad --
 
 mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
 mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
@@ -61,14 +64,9 @@ mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
 emptyContext :: (Monad m) => ContextItem m
 emptyContext = toContext EmptyContext
 
-foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
-foldCX = foldl (<+>) emptyContext
-
-justcx :: (Monad m, ContextLookup m a) => a -> m (Maybe (ContextItem m))
-justcx = return . Just . toContext
-
-
--- Context Writer Monad
+instance Monoid (ContextItem a) where
+    mappend = (<+>)
+    mempty  = ContextList []
 
 newtype ContextWriter m a = CW { 
       runContextWriter :: Writer (ContextItem m) a
@@ -89,7 +87,17 @@ data User = User { getName :: String
             deriving (Show,Read)
 
 instance (Monad m) => ContextLookup m User where
-    cxLookup "name" = justcx . C.pack . getName
-    cxLookup "age"  = justcx . C.pack . show . getAge
+    cxLookup "name" = return . justcx . C.pack . getName
+    cxLookup "age"  = return . justcx . C.pack . show . getAge
     cxLookup _      = return . const Nothing
 
+doLookup _ (ContextPairs []) = return Nothing
+doLookup st (ContextPairs (x:xs)) = do
+    let cx = getContext x
+    s <- cx st
+    case s of
+      Just a  -> return (Just a)
+      Nothing -> doLookup st (ContextPairs xs)
+doLookup _ _ = error "Context not searchable"
+
+               
