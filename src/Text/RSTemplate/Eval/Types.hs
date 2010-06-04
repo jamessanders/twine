@@ -34,9 +34,10 @@ data EmptyContext = EmptyContext
 
 newtype Context m = Context { getContext :: ByteString -> m (Maybe (ContextItem m)) }
 
-class (Monad m) => ContextLookup m a  where
+class (Monad m) => ContextLookup m a | a -> m where
     cxLookup  :: ByteString -> a -> m (Maybe (ContextItem m))
     toContext :: a -> ContextItem m
+
     toContext a = ContextPairs [Context (flip cxLookup a)]
 
 instance (Monad m) => ContextLookup m EmptyContext where
@@ -97,4 +98,18 @@ instance (Monad m) => ContextLookup m [(String,String)] where
 instance (Monad m) => ContextLookup m [(String,ContextItem m)] where
     cxLookup k = return . lookup (C.unpack k) 
 
-                     
+instance (Monad m) => ContextLookup m String where
+    toContext = ContextValue . C.pack
+    cxLookup _ _ = return Nothing
+
+instance (Monad m) => ContextLookup m [Context m] where
+    cxLookup k (x:xs) = do
+      x <- (getContext x) k 
+      case x of 
+        Just a -> return (Just a)
+        Nothing  -> cxLookup k xs
+
+instance (Monad m) => ContextLookup m (ContextItem m) where
+    cxLookup k (ContextPairs a) = cxLookup k a
+    cxLookup k _ = return Nothing
+
