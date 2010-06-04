@@ -82,15 +82,19 @@ set k v = tell $ toContext (C.pack k, v)
 
 ------------------------------------------------------------------------
 
-data User = User { getName :: String 
-                 , getAge  :: Int }
-            deriving (Show,Read)
+-- data User = User { getName :: String 
+--                  , getAge  :: Int }
+--             deriving (Show,Read)
 
-instance (Monad m) => ContextLookup m User where
-    cxLookup "name" = return . justcx . C.pack . getName
-    cxLookup "age"  = return . justcx . C.pack . show . getAge
-    cxLookup _      = return . const Nothing
+-- instance (Monad m) => ContextLookup m User where
+--     cxLookup "name" = return . justcx . C.pack . getName
+--     cxLookup "age"  = return . justcx . C.pack . show . getAge
+--     cxLookup _      = return . const Nothing
 
+instance (Monad m) => ContextLookup m [(String,String)] where
+    cxLookup k = return . fmap (ContextValue . C.pack) . lookup (C.unpack k)
 
+instance (Monad m) => ContextLookup m [(String,ContextItem m)] where
+    cxLookup k = return . lookup (C.unpack k) 
 
-               
+                     
