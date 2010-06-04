@@ -6,7 +6,9 @@
   , UndecidableInstances
   , FunctionalDependencies
   , FlexibleContexts
-  , OverloadedStrings #-}
+  , OverlappingInstances
+  , OverloadedStrings
+ #-}
 
 module Text.RSTemplate.Eval.Types where
 
@@ -26,7 +28,7 @@ instance (Monad m) => Eq (ContextItem m) where
     _ == _ = error "Unable to determine equality."
 
 instance (Monad m) => Show (ContextItem m) where
-    show (ContextPairs _) = "<ContextPairs>"
+    show (ContextPairs _) = "<ContextMap>"
     show (ContextValue x) = C.unpack x
     show (ContextList  _) = "<ContextList>"
 
@@ -69,38 +71,38 @@ instance Monoid (ContextItem a) where
     mappend = (<+>)
     mempty  = ContextList []
 
-newtype ContextWriter m a = CW { 
-      runContextWriter :: Writer (ContextItem m) a
-    } deriving (Monad,MonadWriter (ContextItem m))
+type ContextWriter m a = Writer (ContextItem m) a
 
-execCXW = execWriter . runContextWriter
-cxw = execCXW
+execCXW = execWriter 
+cxw     = execCXW
 
-set :: (MonadWriter (ContextItem m1) m,
-        ContextLookup m1 (ByteString, t)) =>
-       String -> t -> m ()
-set k v = tell $ toContext (C.pack k, v)
+set k v = tell $ toContext [(C.pack k, toContext v)]
 
 ------------------------------------------------------------------------
 
--- data User = User { getName :: String 
---                  , getAge  :: Int }
---             deriving (Show,Read)
+data User = User { getName :: String 
+                 , getAge  :: Int }
+            deriving (Show,Read)
 
--- instance (Monad m) => ContextLookup m User where
---     cxLookup "name" = return . justcx . C.pack . getName
---     cxLookup "age"  = return . justcx . C.pack . show . getAge
---     cxLookup _      = return . const Nothing
+instance (Monad m) => ContextLookup m User where
+    cxLookup "name" = return . justcx . C.pack . getName
+    cxLookup "age"  = return . justcx . C.pack . show . getAge
+    cxLookup _      = return . const Nothing
 
 instance (Monad m) => ContextLookup m [(String,String)] where
     cxLookup k = return . fmap (ContextValue . C.pack) . lookup (C.unpack k)
 
 instance (Monad m) => ContextLookup m [(String,ContextItem m)] where
     cxLookup k = return . lookup (C.unpack k) 
+instance (Monad m) => ContextLookup m [(ByteString,ContextItem m)] where
+    cxLookup k = return . lookup k
 
 instance (Monad m) => ContextLookup m String where
     toContext = ContextValue . C.pack
     cxLookup _ _ = return Nothing
+
+instance (Monad m,ContextLookup m a) => ContextLookup m [a] where
+    toContext a = ContextList (map toContext a)
 
 instance (Monad m) => ContextLookup m [Context m] where
     cxLookup k (x:xs) = do

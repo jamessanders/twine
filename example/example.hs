@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, MultiParamTypeClasses, FlexibleInstances, UndecidableInstances #-}
 import Prelude hiding (putStr)
 import Text.RSTemplate
 import Data.ByteString.Char8 (ByteString,putStr)
@@ -21,21 +21,27 @@ data Pet = Pet { getPetName :: String
 mkPet a b c = Pet a b c
 
 -- Make Pet an instance of ContextLookup so that we can use it in out templates
-instance ContextLookup Pet where
-    cxLookup "name" = justcx . getPetName
-    cxLookup "age"  = justcx . show . getPetAge
-    cxLookup "species" = justcx . show . getPetSpecies
-    cxLookup _ = const Nothing
+instance (Monad m) => ContextLookup m Pet where
+    cxLookup "name"    = return . justcx . getPetName
+    cxLookup "age"     = return . justcx . show . getPetAge
+    cxLookup "species" = return . justcx . show . getPetSpecies
+    cxLookup _         = return . const Nothing
 
 -- Create a context using the ContextWriter monad
+cx :: (Monad m) => ContextWriter m ()
 cx = do 
   set "author" . cxw $ do set "fname" (bs "James")
                           set "lname" (bs "Sanders")
-  set "pets" [mkPet "Samson"  1 Dog
-             ,mkPet "Mango"   1 Bird
+  set "pets" [mkPet "Samson"  1   Dog
+             ,mkPet "Mango"   1   Bird
              ,mkPet "Simon"   1.5 Cat
              ,mkPet "Spikey"  1.5 Fish]
 
+runRSTemplate tmp cx = do
+  t   <- parseFile tmp
+  let cxc = cxw cx
+  runEval t cxc
+
 -- Run our template using the cx function for its context
-main = runRSTemplate "example.tpl" cx >>= putStr
+main = runRSTemplate "../example/example.tpl" cx >>= putStr
 
