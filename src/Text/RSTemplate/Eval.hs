@@ -6,7 +6,6 @@ import Text.RSTemplate.Eval.Types
 import Text.RSTemplate.Eval.Builtins
 
 import Data.Maybe
-
 import qualified Data.ByteString.Char8 as C
 
 split :: Char -> [Char] -> [[Char]]

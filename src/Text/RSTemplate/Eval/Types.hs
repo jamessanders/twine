@@ -91,13 +91,6 @@ instance (Monad m) => ContextLookup m User where
     cxLookup "age"  = return . justcx . C.pack . show . getAge
     cxLookup _      = return . const Nothing
 
-doLookup _ (ContextPairs []) = return Nothing
-doLookup st (ContextPairs (x:xs)) = do
-    let cx = getContext x
-    s <- cx st
-    case s of
-      Just a  -> return (Just a)
-      Nothing -> doLookup st (ContextPairs xs)
-doLookup _ _ = error "Context not searchable"
+
 
                
