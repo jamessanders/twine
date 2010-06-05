@@ -1,68 +1,97 @@
-{-# LANGUAGE OverloadedStrings #-}
-module Text.RSTemplate.Eval (evalTemplate,split,mapCL,showCX) where
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+module Text.RSTemplate.Eval where
 
-import Text.RSTemplate.Parser.Types
+--import Text.RSTemplate
+
+import Control.Monad.State
+import Control.Monad.Identity
+
 import Text.RSTemplate.Eval.Types
 import Text.RSTemplate.Eval.Builtins
-
-import Data.Maybe
+import Text.RSTemplate.Parser.Types
+import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as C
+import Debug.Trace
+
+type Stack m a = StateT (ContextItem m) m a 
+
+runStack = runStateT 
+
+runEval tm cx = do 
+  (r,_) <- runStack (eval' tm) cx
+  return $ C.concat r
+
+eval' :: (Monad m) => [TemplateCode] -> Stack m [ByteString] 
+eval' = mapM eval
+
+eval :: (Monad m) => TemplateCode -> Stack m ByteString
+eval (Text x) = return x 
+
+eval (Slot x) = do
+  ee  <- evalExpr x
+  case ee of 
+    Just (ContextValue x) -> return x
+    Nothing -> return (C.pack "")
+
+eval (Assign k e) = do 
+  Just ee <- evalExpr e
+  st <- get
+  put (toContext [(k,ee)] <+> st)
+  return (C.pack "")
+
+eval (Cond e bls) = do
+  ee <- evalExpr e
+  st <- get
+  case ee of
+    Just _  -> lift $ runEval bls st
+    Nothing -> return (C.pack "") 
+
+eval (Loop e as bls) = do
+  ee <- evalExpr e
+  case ee of 
+    Just a  -> runLoop a
+    Nothing -> return (C.pack "")
+  where runLoop (ContextList ls) = fmap (C.concat) $ mapM inner ls
+        inner v = do cx <- get
+                     lift $ runEval bls (toContext [(as,v)] <+> cx)
+
+
+evalExpr :: (Monad m) => Expr -> Stack m (Maybe (ContextItem m))
+evalExpr (Func n a) = do 
+  cx <- get
+  case lookup n builtins of
+    Just f  -> fmap f $ mapM (evalExpr) a
+    Nothing -> error $ (C.unpack n) ++ " is not a builtin function."
+evalExpr (Var n) = do g <- get 
+                      r <- lift $ doLookup n g
+                      return r
+evalExpr (NumberLiteral n) = return . justcx . C.pack . show  $ n
+evalExpr (StringLiteral n) = return . justcx $ n
+
+
+doLookup k v = let parts = C.split '.' k
+               in aux parts v
+    where 
+      aux [] t = return (Just t)
+      aux (x:xs) t = do ll <- doLookup' x t
+                        case ll of
+                          Just a  -> aux xs a
+                          Nothing -> return Nothing
+
+doLookup' _ (ContextPairs []) = return Nothing
+doLookup' st (ContextPairs (x:xs)) = do
+    let cx = getContext x
+    s <- cx st
+    case s of
+      Just a  -> return (Just a)
+      Nothing -> doLookup' st (ContextPairs xs)
+doLookup' _ _ = error "Context not searchable"
+
+
+------------------------------------------------------------------------
 
 split :: Char -> [Char] -> [[Char]]
 split delim s
     | [] == rest = [token]
     | otherwise = token : split delim (tail rest)
     where (token,rest) = span (/= delim) s
-
-showCX (ContextValue x) = x
-showCX (ContextList  x) = C.pack $ show x
-showCX (ContextPairs x) = C.pack $ show x
-
-toCX (ContextValue _) = error "not a context"
-toCX (ContextPairs x) = x
-toCX (ContextList  x) = toCX (head x)
-
-mapCL f (ContextList x)  = map (\(a,b)->f b a) $ zip x [1..]
-mapCL f a@(ContextValue x) = [f 1 a]
-mapCL f _ = error "not a list of key/value pairs"
-
-cxpLookup k a = cxpLookup' (C.split '.' k) a
-cxpLookup' (x:xs) (ContextPairs c) = case cxLookup x c of
-                                       Just a -> cxpLookup' xs a
-                                       Nothing -> Nothing
-cxpLookup' (x:xs) _ = Nothing
-cxpLookup' []     a = Just a
-
-evalExpr cx (Func n a) = case lookup n builtins of
-                           Just f  -> f $ map (evalExpr cx) a
-                           Nothing -> error $ (C.unpack n) ++ " is not a builtin function."
-evalExpr cx (Var n) = cxpLookup n cx
-evalExpr cx (NumberLiteral n) = justcx . C.pack . show  $ n
-evalExpr cx (StringLiteral n) = justcx n
-
-evalTemplate tc cx = C.concat . reverse $ walk cx tc []
-
-walk _  []     nl = nl
-walk cx (x:xs) nl = let (c,str) = evalTemplateBlock cx x
-                    in walk c xs (str:nl)
-
-evalTemplateBlock cx (Text t) = (cx,t)
-
-evalTemplateBlock cx (Slot k) = (cx,showCX $ fromMaybe (ContextValue C.empty) (evalExpr cx k))
-
-evalTemplateBlock cx (Assign k e) = let ev = evalExpr cx e
-                                    in case ev of
-                                         Just a  -> (cx <+> ContextPairs [CX [(k,a)]] ,C.empty)
-                                         Nothing -> (cx,C.empty)
-
-evalTemplateBlock cx (Cond k bls) = case evalExpr cx k of
-                                      Just _ -> (cx,evalTemplate bls cx)
-                                      Nothing-> (cx,C.empty)
-
-evalTemplateBlock cx (Loop k as bls) = case evalExpr cx k of
-                                         Just val -> (cx,C.concat $ mapCL runLoop val)
-                                         Nothing  -> (cx,C.empty)
-    where runLoop n ls = let ncx = ContextPairs [(CX [(as,ls),("#",ContextValue $ C.pack $ show n)])] <+> cx 
-                         in evalTemplate bls ncx
-
---

@@ -24,9 +24,8 @@ Library
                         ,Text.RSTemplate.Parser.Utils
                         ,Text.RSTemplate.Eval
                         ,Text.RSTemplate.Eval.Types
-                        ,Text.RSTemplate.EvalIO
                         ,Text.RSTemplate.Eval.Builtins
-                        ,Text.RSTemplate.SExprParser
+                        ,Text.RSTemplate.Parser.ExprParser
 
 
      ghc-options:       -O2 -fvia-C

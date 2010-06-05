@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Text.RSTemplate.SExprParser (parseExpr) where
+module Text.RSTemplate.Parser.ExprParser (parseExpr) where
 
 import Control.Applicative ((<$>))
 import Data.ByteString.Char8 hiding (filter,tail)
