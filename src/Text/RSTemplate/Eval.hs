@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module Text.RSTemplate.Eval where
+module Text.RSTemplate.Eval (runEval) where
 
 --import Text.RSTemplate
 
