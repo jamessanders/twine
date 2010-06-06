@@ -1,4 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Text.RSTemplate.Eval (runEval) where
 
 --import Text.RSTemplate
@@ -31,6 +30,7 @@ eval (Slot x) = do
   ee  <- evalExpr x
   case ee of 
     Just (ContextValue x) -> return x
+    Just x -> return (C.pack . show $ x)
     Nothing -> return (C.pack "")
 
 eval (Assign k e) = do 

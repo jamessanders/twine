@@ -28,15 +28,15 @@ instance (Monad m) => Eq (ContextItem m) where
     _ == _ = error "Unable to determine equality."
 
 instance (Monad m) => Show (ContextItem m) where
-    show (ContextPairs _) = "<ContextMap>"
+    show (ContextPairs _) = "((ContextMap))"
     show (ContextValue x) = C.unpack x
-    show (ContextList  _) = "<ContextList>"
+    show (ContextList  _) = "((ContextList))"
 
 data EmptyContext = EmptyContext
 
 newtype Context m = Context { getContext :: ByteString -> m (Maybe (ContextItem m)) }
 
-class (Monad m) => ContextLookup m a | a -> m where
+class (Monad m) => ContextLookup m a where
     cxLookup  :: ByteString -> a -> m (Maybe (ContextItem m))
     toContext :: a -> ContextItem m
 
@@ -76,7 +76,10 @@ type ContextWriter m a = Writer (ContextItem m) a
 execCXW = execWriter 
 cxw     = execCXW
 
-set k v = tell $ toContext [(C.pack k, toContext v)]
+
+
+set k v = tell $ ContextPairs [Context aux]
+    where aux x = if x == (C.pack k) then return . justcx $ v else return Nothing
 
 ------------------------------------------------------------------------
 
@@ -94,6 +97,7 @@ instance (Monad m) => ContextLookup m [(String,String)] where
 
 instance (Monad m) => ContextLookup m [(String,ContextItem m)] where
     cxLookup k = return . lookup (C.unpack k) 
+
 instance (Monad m) => ContextLookup m [(ByteString,ContextItem m)] where
     cxLookup k = return . lookup k
 
@@ -116,3 +120,6 @@ instance (Monad m) => ContextLookup m (ContextItem m) where
     cxLookup k (ContextPairs a) = cxLookup k a
     cxLookup k _ = return Nothing
 
+
+listToContext :: (Monad m,ContextLookup m a) => [a] -> ContextItem m 
+listToContext = ContextList . map toContext
