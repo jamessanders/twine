@@ -102,7 +102,8 @@ instance (Monad m) => ContextLookup m String where
     cxLookup _ _ = return Nothing
 
 instance (Monad m,ContextLookup m a) => ContextLookup m [a] where
-    toContext a = ContextList (map toContext a)
+    cxLookup _ _ = return Nothing
+    toContext a  = ContextList (map toContext a)
 
 instance (Monad m) => ContextLookup m [Context m] where
     cxLookup k (x:xs) = do
