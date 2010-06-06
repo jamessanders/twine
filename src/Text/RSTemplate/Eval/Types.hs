@@ -1,10 +1,7 @@
 {-#LANGUAGE MultiParamTypeClasses
   , TypeSynonymInstances
   , FlexibleInstances
-  , ExistentialQuantification
-  , GeneralizedNewtypeDeriving 
   , UndecidableInstances
-  , FunctionalDependencies
   , FlexibleContexts
   , OverlappingInstances
   , OverloadedStrings
@@ -28,8 +25,8 @@ instance (Monad m) => Eq (ContextItem m) where
     _ == _ = error "Unable to determine equality."
 
 instance (Monad m) => Show (ContextItem m) where
-    show (ContextPairs _) = "((ContextMap))"
     show (ContextValue x) = C.unpack x
+    show (ContextPairs _) = "((ContextMap))"
     show (ContextList  _) = "((ContextList))"
 
 data EmptyContext = EmptyContext
@@ -48,49 +45,6 @@ instance (Monad m) => ContextLookup m EmptyContext where
 instance (Monad m) => ContextLookup m ByteString where
     cxLookup _ _ = return Nothing
     toContext a = ContextValue a
-
--- simpleContext
-
-foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
-foldCX = foldl (<+>) emptyContext
-
-justcx :: (Monad m, ContextLookup m a) => a -> (Maybe (ContextItem m))
-justcx = Just . toContext
-
-
--- Context Writer Monad --
-
-mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
-mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
-(<+>) = mergeCXP
-
-emptyContext :: (Monad m) => ContextItem m
-emptyContext = toContext EmptyContext
-
-instance Monoid (ContextItem a) where
-    mappend = (<+>)
-    mempty  = ContextList []
-
-type ContextWriter m a = Writer (ContextItem m) a
-
-execCXW = execWriter 
-cxw     = execCXW
-
-
-
-set k v = tell $ ContextPairs [Context aux]
-    where aux x = if x == (C.pack k) then return . justcx $ v else return Nothing
-
-------------------------------------------------------------------------
-
-data User = User { getName :: String 
-                 , getAge  :: Int }
-            deriving (Show,Read)
-
-instance (Monad m) => ContextLookup m User where
-    cxLookup "name" = return . justcx . C.pack . getName
-    cxLookup "age"  = return . justcx . C.pack . show . getAge
-    cxLookup _      = return . const Nothing
 
 instance (Monad m) => ContextLookup m [(String,String)] where
     cxLookup k = return . fmap (ContextValue . C.pack) . lookup (C.unpack k)
@@ -121,5 +75,32 @@ instance (Monad m) => ContextLookup m (ContextItem m) where
     cxLookup k _ = return Nothing
 
 
-listToContext :: (Monad m,ContextLookup m a) => [a] -> ContextItem m 
-listToContext = ContextList . map toContext
+-- simpleContext
+
+foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
+foldCX = foldl (<+>) emptyContext
+
+justcx :: (Monad m, ContextLookup m a) => a -> (Maybe (ContextItem m))
+justcx = Just . toContext
+
+
+-- Context Writer Monad --
+
+mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
+mergeCXP (ContextList a) (ContextList b) = ContextList (a ++ b)
+(<+>) = mergeCXP
+
+emptyContext :: (Monad m) => ContextItem m
+emptyContext = toContext EmptyContext
+
+instance Monoid (ContextItem a) where
+    mappend = (<+>)
+    mempty  = ContextList []
+
+type ContextWriter m a = Writer (ContextItem m) a
+
+execCXW = execWriter 
+cxw     = execCXW
+set k v = tell $ ContextPairs [Context aux]
+    where aux x = if x == (C.pack k) then return . justcx $ v else return Nothing
+
