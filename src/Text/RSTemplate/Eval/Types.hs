@@ -17,6 +17,7 @@ import Control.Monad.Identity
 
 data ContextItem m = ContextPairs [Context m]
                    | ContextValue ByteString
+                   | ContextBool Bool
                    | ContextList [ContextItem m]
 
 instance (Monad m) => Eq (ContextItem m) where
@@ -28,6 +29,7 @@ instance (Monad m) => Show (ContextItem m) where
     show (ContextValue x) = C.unpack x
     show (ContextPairs _) = "((ContextMap))"
     show (ContextList  _) = "((ContextList))"
+    show (ContextBool x)  = show x
 
 data EmptyContext = EmptyContext
 
@@ -45,6 +47,9 @@ instance (Monad m) => ContextLookup m EmptyContext where
 instance (Monad m) => ContextLookup m ByteString where
     cxLookup _ _ = return Nothing
     toContext a = ContextValue a
+
+instance (Monad m) => ContextLookup m Bool where
+    toContext = ContextBool
 
 instance (Monad m) => ContextLookup m [(String,String)] where
     cxLookup k = return . fmap (ContextValue . C.pack) . lookup (C.unpack k)

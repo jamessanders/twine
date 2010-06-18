@@ -43,7 +43,9 @@ eval (Cond e bls) = do
   ee <- evalExpr e
   st <- get
   case ee of
-    Just _  -> lift $ runEval bls st
+    Just x  -> case x of 
+                 ContextBool False -> return (C.pack "")
+                 _ -> lift $ runEval bls st
     Nothing -> return (C.pack "") 
 
 eval (Loop e as bls) = do
