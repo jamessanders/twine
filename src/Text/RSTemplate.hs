@@ -8,4 +8,3 @@ import Text.RSTemplate.Parser
 import Text.RSTemplate.Eval.Types
 import Text.RSTemplate.Eval
 
-

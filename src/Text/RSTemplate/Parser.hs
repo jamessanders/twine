@@ -9,6 +9,7 @@
 module Text.RSTemplate.Parser (parseTemplate
                               ,parseFile
                               ,doInclude
+                              ,loadTemplate
                               ) where
 
 import Control.Monad
@@ -138,6 +139,8 @@ stepParser = do c <- getChar
 parseTemplate t = getBlocks $ execState stepParser $ makePS t
 
 parseFile fp = C.readFile fp >>= return . parseTemplate
+
+loadTemplate fp = parseFile fp >>= doInclude (takeDirectory fp)
 
 doInclude base ps = foldM ax [] ps 
     where ax a (Incl fs) = do pf <- parseFile (base </> fs) 

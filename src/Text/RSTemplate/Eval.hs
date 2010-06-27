@@ -20,10 +20,10 @@ runEval tm cx = do
   (r,_) <- runStack (eval' tm) cx
   return $ C.concat r
 
-eval' :: (Monad m) => [TemplateCode] -> Stack m [ByteString] 
+eval' :: (Monad m, Functor m) => [TemplateCode] -> Stack m [ByteString] 
 eval' = mapM eval
 
-eval :: (Monad m) => TemplateCode -> Stack m ByteString
+eval :: (Monad m, Functor m) => TemplateCode -> Stack m ByteString
 eval (Text x) = return x 
 
 eval (Slot x) = do
@@ -58,7 +58,7 @@ eval (Loop e as bls) = do
                      lift $ runEval bls (toContext [(as,v)] <+> cx)
 
 
-evalExpr :: (Monad m) => Expr -> Stack m (Maybe (ContextItem m))
+evalExpr :: (Monad m, Functor m) => Expr -> Stack m (Maybe (ContextItem m))
 evalExpr (Func n a) = do 
   cx <- get
   case lookup n builtins of

@@ -4,6 +4,7 @@ module Text.RSTemplate.Eval.Builtins (builtins) where
 import Data.Char
 import Data.List
 import Text.RSTemplate.Eval.Types
+import Text.RSTemplate.Eval.Context
 import Control.Exception (assert)
 import qualified Data.ByteString.Char8 as C
 
