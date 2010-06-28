@@ -8,7 +8,7 @@ import Control.Monad.Identity
 import Text.RSTemplate.Eval.Types
 import Text.RSTemplate.Eval.Builtins
 import Text.RSTemplate.Parser.Types
-import Data.ByteString.Char8 (ByteString)
+import Data.ByteString.Char8 (ByteString,pack,unpack)
 import qualified Data.ByteString.Char8 as C
 import Debug.Trace
 
@@ -57,6 +57,7 @@ eval (Loop e as bls) = do
         inner v = do cx <- get
                      lift $ runEval bls (toContext [(as,v)] <+> cx)
 
+eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 
 evalExpr :: (Monad m, Functor m) => Expr -> Stack m (Maybe (ContextItem m))
 evalExpr (Func n a) = do 
@@ -87,7 +88,9 @@ doLookup' st (ContextPairs (x:xs)) = do
     case s of
       Just a  -> return (Just a)
       Nothing -> doLookup' st (ContextPairs xs)
-doLookup' st x = error $ "Context not searchable when looking up " ++ st ++ " in " ++ x
+doLookup' st (ContextBool True) = return (Just $ ContextValue $ pack "True")
+doLookup' st (ContextBool False) = return Nothing
+doLookup' st x = error $ "Context not searchable when looking up '" ++ unpack st ++ "' in " ++ show x
 
 ------------------------------------------------------------------------
 
