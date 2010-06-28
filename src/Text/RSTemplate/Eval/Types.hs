@@ -11,7 +11,7 @@
 module Text.RSTemplate.Eval.Types where
 
 import qualified Data.ByteString.Char8 as C
-import Data.ByteString.Char8 (ByteString)
+import Data.ByteString.Char8 (ByteString,pack)
 import Control.Monad.Writer
 import Data.Monoid
 import Control.Monad.Identity 
@@ -48,6 +48,10 @@ class (Monad m) => ContextLookup m a where
 
     toContext a = ContextPairs [Context (flip cxLookup a)]
 
+instance (Monad m) => ContextLookup m (ContextItem m) where
+    cxLookup _ _ = return Nothing
+    toContext = id
+
 -- simpleContext
 
 foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
@@ -77,8 +81,13 @@ type ContextWriter m = WriterT (ContextItem m) m ()
 execCXW,cxw :: (Monad m) => ContextWriter m -> m (ContextItem m) 
 execCXW = execWriterT 
 cxw     = execCXW
+
 set k v = tell $ ContextPairs [Context aux]
     where aux x = if x == (C.pack k) 
                     then return . justcx $ v 
                     else return Nothing
+
+
+with k fn = do cx <- lift $ execCXW fn
+               set "page" cx
 

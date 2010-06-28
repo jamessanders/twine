@@ -17,6 +17,8 @@ myUpper [Nothing] = Nothing
 myLower [Just (ContextValue x)] = justcx (C.map toLower x)
 myLower [Nothing] = Nothing
 
+myCapitalize [Just (ContextValue x)] = justcx (toUpper (C.head x) `C.cons` C.map toLower (C.tail x))
+
 myLength [Just (ContextValue x)] = justcx . C.pack . show . C.length $ x
 myLength [Just (ContextList x)]  = justcx . C.pack . show . length $ x
 myLength [Just (ContextPairs x)] = justcx . C.pack . show . length $ x
@@ -79,6 +81,7 @@ builtins = [("id",myId)
            ,("not",myNot)
            ,("upper",myUpper)
            ,("lower",myLower)
+           ,("capitalize",myCapitalize)
            ,("length",myLength)
            ,("eq", myEq)             
            ,("eq?", myEq)             
@@ -86,13 +89,13 @@ builtins = [("id",myId)
            ,("even?",myEven)
            ,("odd",myOdd)
            ,("odd?",myOdd)
-           -- ,("range",myRange)
-           -- ,("zip",myZip)
+           ,("range",myRange)
+           ,("zip",myZip)
            ,("$",myGetItem)
            ,("item",myGetItem)
            ,("subtract",mathOn (-))
            ,("add",mathOn (+))
-           --,("enum",myEnum)
+           ,("enum",myEnum)
            ,("head",myHead)
            ,("elem?",myElem)
            ,("succ",mySucc)]
