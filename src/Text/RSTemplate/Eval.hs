@@ -87,8 +87,7 @@ doLookup' st (ContextPairs (x:xs)) = do
     case s of
       Just a  -> return (Just a)
       Nothing -> doLookup' st (ContextPairs xs)
-doLookup' _ _ = error "Context not searchable"
-
+doLookup' st x = error $ "Context not searchable when looking up " ++ st ++ " in " ++ x
 
 ------------------------------------------------------------------------
 
