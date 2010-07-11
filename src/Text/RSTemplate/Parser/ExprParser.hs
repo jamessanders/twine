@@ -13,6 +13,7 @@ mkNumber = NumberLiteral . read
 mkVar    = Var . pack
 
 getName (Var n) = n
+getName x       = error $ "getName: No support for " ++ (show x)
              
 openP = char '('
 closeP = char ')' 
@@ -26,7 +27,9 @@ valid = letter <|> oneOf "#+-*$/?._" <|> digit
 
 sexpr = do openP 
            x <- filter (/= Var (pack "")) <$> manyTill (atom <|> sexpr) closeP
-           return (Func (getName $ Prelude.head x) (tail x))
+           case Prelude.head x of
+             a@(StringLiteral st) -> return (Func "id" [a])
+             _ -> return (Func (getName $ Prelude.head x) (tail x))
 
 atom = do n <- lookAhead $ choice [char '"'
                                   ,digit
