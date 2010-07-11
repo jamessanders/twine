@@ -11,14 +11,23 @@ import Text.RSTemplate.Parser.Types
 import Data.ByteString.Char8 (ByteString,pack,unpack)
 import qualified Data.ByteString.Char8 as C
 import Debug.Trace
+import qualified Data.Map as M
 
-type Stack m a = StateT (ContextItem m) m a 
+type Stack m a = StateT (ContextState m) m a 
 
 runStack = runStateT 
 
+runEval :: (Monad m, Functor m) => [TemplateCode] -> ContextItem m -> m ByteString
 runEval tm cx = do 
-  (r,_) <- runStack (eval' tm) cx
+  (r,_) <- runStack (eval' tm) (ContextState cx builtins)
   return $ C.concat r
+
+getCX :: (Monad m) => Stack m (ContextItem m)
+getCX = do s <- get 
+           return (getContextState s)
+
+putCX cx = do s <- get
+              put $ s { getContextState = cx }
 
 eval' :: (Monad m, Functor m) => [TemplateCode] -> Stack m [ByteString] 
 eval' = mapM eval
@@ -35,13 +44,13 @@ eval (Slot x) = do
 
 eval (Assign k e) = do 
   Just ee <- evalExpr e
-  st <- get
-  put (toContext [(k,ee)] <+> st)
+  st <- getCX
+  putCX (toContext [(k,ee)] <+> st)
   return (C.pack "")
 
 eval (Cond e bls) = do
   ee <- evalExpr e
-  st <- get
+  st <- getCX
   case ee of
     Just x  -> case x of 
                  ContextBool False -> return (C.pack "")
@@ -54,20 +63,32 @@ eval (Loop e as bls) = do
     Just a  -> runLoop a
     Nothing -> return (C.pack "")
   where runLoop (ContextList ls) = fmap (C.concat) $ mapM inner ls
-        inner v = do cx <- get
+        inner v = do cx <- getCX
                      lift $ runEval bls (toContext [(as,v)] <+> cx)
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 
 evalExpr :: (Monad m, Functor m) => Expr -> Stack m (Maybe (ContextItem m))
 evalExpr (Func n a) = do 
-  cx <- get
-  case lookup n builtins of
-    Just f  -> fmap f $ mapM (evalExpr) a
-    Nothing -> error $ (C.unpack n) ++ " is not a builtin function."
-evalExpr (Var n) = do g <- get 
+  cx <- getCX
+  case M.lookup n builtins of
+    Just f  -> do args <- mapM evalExpr a
+                  lift $ f args
+    Nothing -> do ll <- lift $ doLookup n cx
+                  case ll of 
+                    Just (ContextFunction f) -> do 
+                      args <- mapM evalExpr a
+                      lift $ f args
+                    _ -> error $ (C.unpack n) ++ " is not a function. "
+
+                    
+evalExpr (Var n) = do g <- getCX 
                       r <- lift $ doLookup n g
-                      return r
+                      case r of
+                        Just a -> return r
+                        Nothing-> case M.lookup n builtins of
+                                    Just f  -> lift $ f []
+                                    Nothing -> return Nothing
 evalExpr (NumberLiteral n) = return . justcx . C.pack . show  $ n
 evalExpr (StringLiteral n) = return . justcx $ n
 

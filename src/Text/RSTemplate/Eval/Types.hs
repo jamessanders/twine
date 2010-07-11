@@ -16,11 +16,18 @@ import Control.Monad.Writer
 import Data.Monoid
 import Control.Monad.Identity 
 import Control.Monad.Trans
+import qualified Data.Map as M
 
 data ContextItem m = ContextPairs [Context m]
                    | ContextValue ByteString
                    | ContextBool Bool
                    | ContextList [ContextItem m]
+                   | ContextFunction ([Maybe (ContextItem m)] -> m (Maybe (ContextItem m)))
+
+type BuiltinFunc m = [Maybe (ContextItem m)] -> m (Maybe (ContextItem m))
+
+data ContextState m = ContextState { getContextState :: (ContextItem m)
+                                   , getContextFuns  :: M.Map C.ByteString (BuiltinFunc m) }
 
 
 instance (Monad m) => Eq (ContextItem m) where

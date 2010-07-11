@@ -17,7 +17,8 @@ Library
                         , monads-fd >= 0.1 && <0.2
                         , bytestring >= 0.9.1.5
                         , filepath >= 1.1.0.3
-                        , parsec >= 3.1.0                     
+                        , parsec >= 3.1.0 
+                        , containers >= 0.3                                           
      Exposed-modules:   Text.RSTemplate
                         ,Text.RSTemplate.Eval.Context    
      Other-modules:     Text.RSTemplate.Parser
