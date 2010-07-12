@@ -21,10 +21,11 @@ import qualified Data.Map as M
 data ContextItem m = ContextPairs [Context m]
                    | ContextValue ByteString
                    | ContextBool Bool
+                   | ContextNull
                    | ContextList [ContextItem m]
-                   | ContextFunction ([Maybe (ContextItem m)] -> m (Maybe (ContextItem m)))
+                   | ContextFunction ([ContextItem m] -> m (ContextItem m))
 
-type BuiltinFunc m = [Maybe (ContextItem m)] -> m (Maybe (ContextItem m))
+type BuiltinFunc m = [ContextItem m] -> m (ContextItem m)
 
 data ContextState m = ContextState { getContextState :: (ContextItem m)
                                    , getContextFuns  :: M.Map C.ByteString (BuiltinFunc m) }
@@ -40,32 +41,34 @@ instance (Monad m) => Show (ContextItem m) where
     show (ContextPairs _) = "((ContextMap))"
     show (ContextList  _) = "((ContextList))"
     show (ContextBool x)  = show x
+    show (ContextNull)    = ""
+    show (ContextFunction _) = "((ContextFunction))"
 
 data EmptyContext = EmptyContext
 
-instance (Monad m) => ContextLookup m EmptyContext where
-    cxLookup _ _ = return Nothing
-
-
-newtype Context m = Context { getContext :: ByteString -> m (Maybe (ContextItem m)) }
+newtype Context m = Context { getContext :: ByteString -> m (ContextItem m) }
 
 class (Monad m) => ContextLookup m a where
-    cxLookup  :: ByteString -> a -> m (Maybe (ContextItem m))
+    cxLookup  :: ByteString -> a -> m (ContextItem m)
     toContext :: a -> ContextItem m
 
     toContext a = ContextPairs [Context (flip cxLookup a)]
 
 instance (Monad m) => ContextLookup m (ContextItem m) where
-    cxLookup _ _ = return Nothing
+    cxLookup _ _ = return ContextNull
     toContext = id
+
+instance (Monad m) => ContextLookup m EmptyContext where
+    cxLookup _ _ = return ContextNull
+
 
 -- simpleContext
 
 foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
 foldCX = foldl (<+>) emptyContext
 
-justcx :: (Monad m, ContextLookup m a) => a -> (Maybe (ContextItem m))
-justcx = Just . toContext
+justcx :: (Monad m, ContextLookup m a) => a -> ContextItem m
+justcx = toContext
 
 
 -- Context Writer Monad --
@@ -92,7 +95,7 @@ cxw     = execCXW
 set k v = tell $ ContextPairs [Context aux]
     where aux x = if x == (C.pack k) 
                     then return . justcx $ v 
-                    else return Nothing
+                    else return ContextNull
 
 
 with k fn = do cx <- lift $ execCXW fn
