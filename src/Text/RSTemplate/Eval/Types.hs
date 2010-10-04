@@ -61,6 +61,10 @@ instance (Monad m) => ContextLookup m (ContextItem m) where
 instance (Monad m) => ContextLookup m EmptyContext where
     cxLookup _ _ = return ContextNull
 
+instance (Monad m, ContextLookup m a) => ContextLookup m (Maybe a) where
+    toContext x = case x of 
+                    Just a -> toContext a
+                    Nothing -> ContextNull
 
 -- simpleContext
 
