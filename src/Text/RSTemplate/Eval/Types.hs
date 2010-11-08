@@ -62,9 +62,10 @@ instance (Monad m) => ContextBinding m EmptyContext where
     binding _ _ = return ContextNull
 
 instance (Monad m, ContextBinding m a) => ContextBinding m (Maybe a) where
-    bind x = case x of 
-                    Just a -> bind a
-                    Nothing -> ContextNull
+    bind (Just a)  = bind a
+    bind Nothing   = ContextNull
+    binding = undefined
+
 
 -- simpleContext
 
@@ -91,17 +92,11 @@ instance (Monad m) => Monoid (ContextItem m) where
 
 type ContextWriter m = WriterT (ContextItem m) m () 
 
-
-execCXW,cxw :: (Monad m) => ContextWriter m -> m (ContextItem m) 
-execCXW = execWriterT 
-cxw     = execCXW
+makeContext :: (Monad m) => ContextWriter m -> m (ContextItem m) 
+makeContext = execWriterT 
 
 set k v = tell $ ContextPairs [Context aux]
     where aux x = if x == (C.pack k) 
                     then return . justcx $ v 
                     else return ContextNull
-
-
-with k fn = do cx <- lift $ execCXW fn
-               set "page" cx
 
