@@ -52,7 +52,7 @@ eval (Slot x) = debug ("evaluating slot: " ++ show x) $ do
 eval (Assign k e) = debug ("evaluating assign " ++ show k ++ " = " ++ show e) $ do 
   ee <- evalExpr e
   st <- getCX
-  putCX (toContext [(k,ee)] <+> st)
+  putCX (bind [(k,ee)] <+> st)
   return (C.pack "")
 
 eval (Cond e bls) = do
@@ -71,7 +71,7 @@ eval (Loop e as bls) = do
     a -> runLoop a
   where runLoop (ContextList ls) = fmap (C.concat) $ mapM inner ls
         inner v = do cx <- getCX
-                     lift2 $ runEval bls (toContext [(as,v)] <+> cx)
+                     lift2 $ runEval bls (bind [(as,v)] <+> cx)
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 

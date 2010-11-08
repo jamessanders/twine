@@ -48,22 +48,22 @@ data EmptyContext = EmptyContext
 
 newtype Context m = Context { getContext :: ByteString -> m (ContextItem m) }
 
-class (Monad m) => ContextLookup m a where
-    cxLookup  :: ByteString -> a -> m (ContextItem m)
-    toContext :: a -> ContextItem m
+class (Monad m) => ContextBinding m a where
+    binding  :: ByteString -> a -> m (ContextItem m)
+    bind :: a -> ContextItem m
 
-    toContext a = ContextPairs [Context (flip cxLookup a)]
+    bind a = ContextPairs [Context (flip binding a)]
 
-instance (Monad m) => ContextLookup m (ContextItem m) where
-    cxLookup _ _ = return ContextNull
-    toContext = id
+instance (Monad m) => ContextBinding m (ContextItem m) where
+    binding _ _ = return ContextNull
+    bind = id
 
-instance (Monad m) => ContextLookup m EmptyContext where
-    cxLookup _ _ = return ContextNull
+instance (Monad m) => ContextBinding m EmptyContext where
+    binding _ _ = return ContextNull
 
-instance (Monad m, ContextLookup m a) => ContextLookup m (Maybe a) where
-    toContext x = case x of 
-                    Just a -> toContext a
+instance (Monad m, ContextBinding m a) => ContextBinding m (Maybe a) where
+    bind x = case x of 
+                    Just a -> bind a
                     Nothing -> ContextNull
 
 -- simpleContext
@@ -71,8 +71,8 @@ instance (Monad m, ContextLookup m a) => ContextLookup m (Maybe a) where
 foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
 foldCX = foldl (<+>) emptyContext
 
-justcx :: (Monad m, ContextLookup m a) => a -> ContextItem m
-justcx = toContext
+justcx :: (Monad m, ContextBinding m a) => a -> ContextItem m
+justcx = bind
 
 
 -- Context Writer Monad --
@@ -83,7 +83,7 @@ mergeCXP a b = error $ "Cannot merge " ++ show a ++ " and " ++ show b
 (<+>) = mergeCXP
 
 emptyContext :: (Monad m) => ContextItem m
-emptyContext = toContext EmptyContext
+emptyContext = bind EmptyContext
 
 instance (Monad m) => Monoid (ContextItem m) where
     mappend = (<+>)

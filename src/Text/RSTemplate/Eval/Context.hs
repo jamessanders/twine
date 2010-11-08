@@ -6,38 +6,38 @@ import qualified Data.ByteString.Char8 as C
 import Text.RSTemplate.Eval.Types
 import Data.Maybe
 
--- instance (Monad m) => ContextLookup m [(String,String)] where
+-- instance (Monad m) => ContextBinding m [(String,String)] where
 
--- instance (Monad m) => ContextLookup m [(String,ContextItem m)] where
---     cxLookup k = return . lookup (C.unpack k) 
+-- instance (Monad m) => ContextBinding m [(String,ContextItem m)] where
+--     binding k = return . lookup (C.unpack k) 
 
-instance (Monad m) => ContextLookup m [(ByteString,ContextItem m)] where
-     cxLookup k = return . fromMaybe ContextNull . lookup k
+instance (Monad m) => ContextBinding m [(ByteString,ContextItem m)] where
+     binding k = return . fromMaybe ContextNull . lookup k
 
-instance (Monad m) => ContextLookup m String where
-    toContext = ContextValue . C.pack
-    cxLookup _ _ = return ContextNull
+instance (Monad m) => ContextBinding m String where
+    bind = ContextValue . C.pack
+    binding _ _ = return ContextNull
 
-instance (Monad m) => ContextLookup m ByteString where
-    toContext a = ContextValue a
-    cxLookup _ _ = return ContextNull
+instance (Monad m) => ContextBinding m ByteString where
+    bind a = ContextValue a
+    binding _ _ = return ContextNull
 
-instance (Monad m) => ContextLookup m Bool where
-    toContext = ContextBool
-    cxLookup _ _ = return ContextNull
+instance (Monad m) => ContextBinding m Bool where
+    bind = ContextBool
+    binding _ _ = return ContextNull
 
-instance (Monad m,ContextLookup m a) => ContextLookup m [a] where
-    toContext a  = ContextList (map toContext a)
-    cxLookup _ _ = return ContextNull
+instance (Monad m,ContextBinding m a) => ContextBinding m [a] where
+    bind a  = ContextList (map bind a)
+    binding _ _ = return ContextNull
 
--- instance (Monad m) => ContextLookup m [Context m] where
---     cxLookup k (x:xs) = do
+-- instance (Monad m) => ContextBinding m [Context m] where
+--     binding k (x:xs) = do
 --       x <- (getContext x) k 
 --       case x of 
 --         Just a -> return (Just a)
---         Nothing  -> cxLookup k xs
+--         Nothing  -> binding k xs
 
--- instance (Monad m) => ContextLookup m (ContextItem m) where
---     cxLookup k (ContextPairs a) = cxLookup k a
---     cxLookup k _ = return Nothing
+-- instance (Monad m) => ContextBinding m (ContextItem m) where
+--     binding k (ContextPairs a) = binding k a
+--     binding k _ = return Nothing
 
