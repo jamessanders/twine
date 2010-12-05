@@ -1,144 +1,136 @@
-{-# LANGUAGE ExistentialQuantification, 
-  TypeSynonymInstances, 
-  FlexibleInstances, 
-  OverlappingInstances, 
-  UndecidableInstances  #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+module Text.RSTemplate.Parser2 where
 
--- This is where all the parsing magic happens.
-
-module Text.RSTemplate.Parser (parseTemplate
-                              ,parseFile
-                              ,doInclude
-                              ,loadTemplate
-                              ) where
-
-import Control.Monad
-import Control.Monad.State
-import Data.Char 
-import Data.List
-import Data.Maybe
+import Data.ByteString.Char8 (ByteString, pack)
+import Debug.Trace
 import System.FilePath
-
+import Text.Parsec hiding (token)
+import Text.Parsec.ByteString
 import Text.RSTemplate.Parser.Types
-import Text.RSTemplate.Parser.Utils
-import Text.RSTemplate.Parser.ExprParser
-import qualified Data.ByteString.Char8 as C
+import Control.Monad
+import qualified Text.RSTemplate.Parser.ExprParser as EP
 
+token t = do
+  x <- string t
+  spaces
+  return t
 
-strip :: C.ByteString -> C.ByteString
-strip = C.reverse . C.dropWhile isSpace . C.reverse . C.dropWhile isSpace
+template =  templateEntities <|> textBlock
 
-split :: Char -> [Char] -> [[Char]]
-split delim s
-    | [] == rest = [token]
-    | otherwise = token : split delim (tail rest)
-    where (token,rest) = span (/= delim) s
+templateEntities = try slot <|> try conditional <|> try loop <|> try assign <|> try include <?> "Template entity"
 
+startOfEntities = try (string "{{") 
+                  <|> try (string "{@")
+                  <|> try (string "{|")
+                  <|> try (string "{+")
+                  <|> try (string "{?")
+                  <?> "start of entity"
 
-shift :: State ParserState ()
-shift = do ps <- get
-           let nd = getTextQ ps `C.append` C.singleton (C.head (getTemplate ps) )
-           put $ ps { getTextQ = nd
-                    , getTemplate = (C.tail $ getTemplate ps) }
+endOfEntities = try (string "}}") 
+                <|> try (string "@}")
+                <|> try (string "|}")
+                <|> try (string "+}")
+                <|> try (string "?}")
+                <?> "end of entity"
 
-addToTextQ st = do ps <- get 
-                   put $ ps { getTextQ = getTextQ ps `C.append` st}
+textBlock = do 
+  text <- manyTill anyChar ((lookAhead startOfEntities >> return ()) <|> (lookAhead endOfEntities >> return ()) <|> eof)
+  return (Text $ pack text)
 
-dropC :: State ParserState Char
-dropC = do ps <- get
-           put $ ps { getTemplate = (C.tail $ getTemplate ps) }
-           return (C.head $ getTemplate ps)
+slot = do
+  token "{{" <?> "Start of slot"
+  expr <- expression
+  string "}}" <?> "End of slot"
+  return (Slot expr)
 
-dropN 0 = return ()
-dropN n = dropC >> dropN (n-1)
+loop = do
+  token "{@"
+  token "|" <?> "start of loop expression"
+  ident <- name
+  spaces
+  token "<-"
+  from <- expression
+  spaces
+  char '|' <?> "end of loop expression"
+  blocks <- manyTill template (string "@}")
+  return (Loop (from) ident blocks)
 
-digestTextBlock :: State ParserState ()
-digestTextBlock = do ps <- get
-                     put $ ps { getBlocks = (getBlocks ps) ++ [Text $ getTextQ ps]
-                              , getTextQ = C.empty  }
+conditional = do
+  token "{?"
+  token "|" <?> "start of conditional expression"
+  expr <- expression
+  spaces
+  char '|' <?> "end of conditional expression"
+  blocks <- manyTill template (string "?}")
+  return (Cond expr blocks)
 
-addBlock bl = do ps <- get
-                 put $ ps { getBlocks = getBlocks ps ++ [bl] }
+assign = do
+  token "{|"
+  key <- name
+  spaces
+  token "="
+  expr <- expression
+  spaces
+  string "|}"
+  return (Assign key expr)
 
-stepParser :: State ParserState ()
-stepParser = do c <- getChar 
-                case c of
-                  '\\'-> dropC >> continue
-                  '{' -> dropC >> runCommand
-                  otherwise -> if c == '\0' then digestTextBlock else continue
+include = do
+  token "{+"
+  path <- try string' <|> many1 (noneOf " +")  <?> "Filepath"
+  spaces
+  string "+}"
+  return (Incl path)
 
-    where runCommand = do n <- getChar
-                          case n of
-                            '{' -> digestTextBlock >> dropC >> substitute 
-                            '@' -> digestTextBlock >> dropC >> loop
-                            '?' -> digestTextBlock >> dropC >> conditional
-                            '+' -> digestTextBlock >> dropC >> include
-                            '|' -> digestTextBlock >> dropC >> assign
-                            _   -> addToTextQ (C.pack "{")  >> continue
+------------------------------------------------------------------------
+-- Expressions
+------------------------------------------------------------------------
 
-          getChar    = do t <- fmap getTemplate get
-                          if C.null t then return '\0' else return (C.head t)
+sexpr = do
+  token "("
+  n <- name
+  spaces
+  expr <- sepBy expression (space)
+  token ")"
+  return $ Func n expr
 
-          dropTillChar c o = do ch <- getChar
-                                if ch == c 
-                                  then return o 
-                                  else dropC >>= \u->dropTillChar c (C.append o (C.singleton u))
+string' = do
+  char '"'
+  manyTill (noneOf "\"") (char '"')
 
-          continue   = shift >> stepParser
+stringLiteral = do
+  st <- string'
+  return (StringLiteral (pack st))
 
-          substitute = do key <- fmap strip (dropTillChar '}' (C.pack ""))
-                          dropC 
-                          dropC 
-                          addBlock $ Slot (parseExpr key)
-                          stepParser
+numberLiteral = do
+  num <- many1 (digit)
+  trace num $ return (NumberLiteral (read num))
 
-          conditional = do tx <- fmap getTemplate get
-                           let v   = getParam tx
-                           let ei  = findClosing "{?" "?}" tx
-                           let tmp = C.take (ei - 1) tx
-                           let psd = parseTemplate (jumpParam tmp)
-                           addBlock $ Cond (parseExpr v) psd
-                           dropN (ei + 1)
-                           stepParser
+valid = (letter <|> (oneOf "#+-*$/?._") <|> digit)
 
-          loop       = do tx <- fmap getTemplate get
-                          let k  = getLoopParamL tx
-                          let as = getLoopParamN tx
-                          let ei = findClosing "{@" "@}" tx
-                          let tmp = C.take (ei - 1) tx
-                          addBlock $ Loop (parseExpr k) as (parseTemplate (jumpParam tmp))
-                          dropN (ei + 1)
-                          stepParser
+name = do
+  first <- try letter <|> oneOf "#+-*$/?._" 
+  at <- many valid
+  return (pack $ first : at)
 
-          include     = do tx <- fmap getTemplate get
-                           let ei  = findClosing "{+" "+}" tx
-                           let tmp = C.take (ei - 1) tx
-                           addBlock $ Incl (C.unpack (strip tmp))
-                           dropN (ei + 1)
-                           stepParser
+atom = do
+  n <- name
+  return (Var n)
 
-          assign       = do tx <- fmap getTemplate get
-                            let ei  = findClosing "{|" "|}" tx
-                            let tmp = C.take (ei - 1) tx
-                            let (k,v) = C.break (== '=') tmp 
-                            addBlock $ Assign (strip k) (parseExpr (strip . C.tail $ v))
-                            dropN (ei + 1)
-                            stepParser
-
-          getLoopParamN  = strip . C.takeWhile (/='<') . C.tail . C.dropWhile (/= '|') 
-          getLoopParamL  = strip . C.takeWhile (/='|') . C.drop 2 . C.dropWhile (/='<') . C.tail . C.dropWhile (/= '|') 
-          getParam  = strip . C.takeWhile (/='|') . C.tail . C.dropWhile (/= '|') 
-          jumpParam = C.tail . C.dropWhile (/= '|') . C.tail . C.dropWhile (/= '|')
-
-
-
-
+expression = try sexpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
 
 ------------------------------------------------------------------------
 
-parseTemplate t = getBlocks $ execState stepParser $ makePS t
+templateParser = manyTill template eof
 
-parseFile fp = C.readFile fp >>= return . parseTemplate
+parseTemplate name src = case parse templateParser name src of
+                           Right res -> res
+                           Left  err -> error (show err)
+
+parseFile fp = do 
+  parsed <- parseFromFile templateParser fp 
+  case parsed of
+    Right res -> return res
+    Left  err -> error (show err)
 
 loadTemplate fp = parseFile fp >>= doInclude (takeDirectory fp)
 
@@ -147,4 +139,6 @@ doInclude base ps = foldM ax [] ps
                               wi <- doInclude (takeDirectory (base </> fs)) pf
                               return (a ++ wi)
           ax a x         = return (a ++ [x])
+
+
 
