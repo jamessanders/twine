@@ -1,5 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module Text.RSTemplate.Parser2 where
+module Text.RSTemplate.Parser where
 
 import Data.ByteString.Char8 (ByteString, pack)
 import Debug.Trace
@@ -8,7 +8,6 @@ import Text.Parsec hiding (token)
 import Text.Parsec.ByteString
 import Text.RSTemplate.Parser.Types
 import Control.Monad
-import qualified Text.RSTemplate.Parser.ExprParser as EP
 
 token t = do
   x <- string t
