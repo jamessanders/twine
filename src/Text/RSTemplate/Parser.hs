@@ -95,7 +95,7 @@ sexpr = do
 openExpr = do
   n <- name
   spaces
-  expr <- sepBy expression' (space)
+  expr <- sepBy1 expression' (space)
   return $ Func n expr
 
 string' = do
