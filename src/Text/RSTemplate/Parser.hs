@@ -16,7 +16,7 @@ token t = do
 
 template =  templateEntities <|> textBlock
 
-templateEntities = try slot <|> try conditional <|> try loop <|> try assign <|> try include <?> "Template entity"
+templateEntities = try slot <|> try conditional <|> try loop <|> try assign <|> include <?> "Template entity"
 
 startOfEntities = try (string "{{") 
                   <|> try (string "{@")
@@ -88,8 +88,14 @@ sexpr = do
   token "("
   n <- name
   spaces
-  expr <- sepBy expression (space)
+  expr <- sepBy expression' (space)
   token ")"
+  return $ Func n expr
+
+openExpr = do
+  n <- name
+  spaces
+  expr <- sepBy expression' (space)
   return $ Func n expr
 
 string' = do
@@ -115,8 +121,8 @@ atom = do
   n <- name
   return (Var n)
 
-expression = try sexpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
-
+expression = try sexpr <|> try openExpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
+expression' = try sexpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
 ------------------------------------------------------------------------
 
 templateParser = manyTill template eof
