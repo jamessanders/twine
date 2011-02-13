@@ -70,6 +70,10 @@ eval (Loop e as bls) = do
     ContextNull -> return (C.pack "")
     a -> runLoop a
   where runLoop (ContextList ls) = fmap (C.concat) $ mapM inner ls
+        runLoop (ContextPairs x) = do
+          it <- lift2 $ getIterable (head x)
+          runLoop (ContextList it)
+        runLoop x = error $ "Not iterable: " ++ show x
         inner v = do cx <- getCX
                      lift2 $ runEval bls (bind [(as,v)] <+> cx)
 
@@ -101,8 +105,50 @@ evalExpr (Var n) = do g <- getCX
                                     Just f  -> lift2 $ f []
                                     Nothing -> return ContextNull
 
-evalExpr (NumberLiteral n) = return . justcx . C.pack . show  $ n
+evalExpr (NumberLiteral n) = return . ContextInteger $ n
 evalExpr (StringLiteral n) = return . justcx $ n
+
+evalExpr acc@(Accessor n expr) = do
+  g <- getCX
+  accessObjectInContext g acc
+  
+accessObjectInContext :: (Monad m, Functor m) => ContextItem m -> Expr -> Stack m (ContextItem m)
+accessObjectInContext context (Accessor (Var n) expr) = do
+  cx <- lift2 $ doLookup' n context
+  case cx of
+    Nothing -> error "ERROR"
+    Just cx' -> accessObjectInContext cx' expr
+
+accessObjectInContext context (Accessor (Func n a) expr) = do
+  cx <- lift2 $ doLookup' n context
+  case cx of 
+    Nothing -> error "ERROR"
+    Just cx' ->
+      case cx' of
+        ContextFunction f -> do
+          args <- mapM evalExpr a
+          z <- lift2 $ f args
+          accessObjectInContext z expr
+        _ -> accessObjectInContext cx' expr
+
+accessObjectInContext context (Var n) = do
+  cx <- lift2 $ doLookup' n context
+  case cx of
+    Just x -> return x
+    Nothing -> error "ERROR"
+  
+
+accessObjectInContext context (Func n args) = do
+  cx <- lift2 $ doLookup' n context
+  case cx of 
+    Nothing -> error "Error"
+    Just cx' -> do
+      case cx' of
+        ContextFunction f -> do 
+          args' <- mapM evalExpr args
+          lift2 $ f args'
+        _ -> error "Not a callable method"
+
 
 
 doLookup k v = let parts = C.split '.' k

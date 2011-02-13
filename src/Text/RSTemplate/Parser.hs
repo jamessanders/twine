@@ -38,7 +38,9 @@ textBlock = do
 
 slot = do
   token "{{" <?> "Start of slot"
+  spaces
   expr <- expression
+  spaces
   string "}}" <?> "End of slot"
   return (Slot expr)
 
@@ -84,6 +86,19 @@ include = do
 -- Expressions
 ------------------------------------------------------------------------
 
+accessor = do
+  a <- try method <|> try atom <?> "property or method"
+  char '.'
+  b <- expression
+  return $ Accessor a b
+
+method = do
+  a <- name
+  token "("
+  expr <- sepBy expression (token ",")
+  token ")"
+  return $ Func a expr
+
 sexpr = do
   token "("
   n <- name
@@ -110,10 +125,10 @@ numberLiteral = do
   num <- many1 (digit)
   trace num $ return (NumberLiteral (read num))
 
-valid = (letter <|> (oneOf "#+-*$/?._") <|> digit)
+valid = (letter <|> (oneOf "#+-*$/?_") <|> digit)
 
 name = do
-  first <- try letter <|> oneOf "#+-*$/?._" 
+  first <- try letter <|> oneOf "#+-*$/?_" 
   at <- many valid
   return (pack $ first : at)
 
@@ -121,7 +136,7 @@ atom = do
   n <- name
   return (Var n)
 
-expression = try sexpr <|> try openExpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
+expression = try sexpr <|> try accessor <|> try method <|> try openExpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
 expression' = try sexpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
 ------------------------------------------------------------------------
 

@@ -20,6 +20,7 @@ import qualified Data.Map as M
 
 data ContextItem m = ContextPairs [Context m]
                    | ContextValue ByteString
+                   | ContextInteger Integer
                    | ContextBool Bool
                    | ContextNull
                    | ContextList [ContextItem m]
@@ -46,13 +47,25 @@ instance (Monad m) => Show (ContextItem m) where
 
 data EmptyContext = EmptyContext
 
-newtype Context m = Context { getContext :: ByteString -> m (ContextItem m) }
+data Context m = Context { 
+  getContext :: ByteString -> m (ContextItem m),
+  getIterable :: m [ContextItem m]
+  }
 
 class (Monad m) => ContextBinding m a where
     binding  :: ByteString -> a -> m (ContextItem m)
+    makeIterable :: a -> m [ContextItem m]
     bind :: a -> ContextItem m
 
-    bind a = ContextPairs [Context (flip binding a)]
+    makeIterable _ = return [ContextValue "((Not Iterable))"]
+    bind a = ContextPairs $ [Context {
+      getContext  = (flip binding a),
+      getIterable = makeIterable a
+      }]
+                   
+
+instance (Monad m) => ContextBinding m ([ContextItem m] -> m (ContextItem m)) where
+  bind = ContextFunction
 
 instance (Monad m) => ContextBinding m (ContextItem m) where
     binding _ _ = return ContextNull
@@ -95,7 +108,7 @@ type ContextWriter m = WriterT (ContextItem m) m ()
 makeContext :: (Monad m) => ContextWriter m -> m (ContextItem m) 
 makeContext = execWriterT 
 
-set k v = tell $ ContextPairs [Context aux]
+set k v = tell $ ContextPairs [Context { getContext = aux, getIterable = undefined }]
     where aux x = if x == (C.pack k) 
                     then return . justcx $ v 
                     else return ContextNull

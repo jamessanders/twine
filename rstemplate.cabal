@@ -1,5 +1,5 @@
 name:                rstemplate
-version:             1.0.4
+version:             1.1.1
 synopsis:            very simple template system
 description:         very simple template system
 category:            Data
@@ -14,10 +14,10 @@ Cabal-Version:       >= 1.2
 Library
      hs-source-dirs: src
      Build-Depends:     base >= 4
-                        , monads-fd >= 0.1 && <0.2
+                        , mtl
                         , bytestring >= 0.9.1.5
                         , filepath >= 1.1.0.3
-                        , parsec >= 3.1.0 
+                        , parsec >= 3
                         , containers >= 0.3                                           
      Exposed-modules:   Text.RSTemplate
                         ,Text.RSTemplate.Eval.Context    
