@@ -23,7 +23,8 @@ Library
      Other-modules:     Text.RSTemplate.Parser
                         ,Text.RSTemplate.Parser.Types
                         ,Text.RSTemplate.Eval
-                        ,Text.RSTemplate.Eval.Context    
+                        ,Text.RSTemplate.Eval.Context
+                        ,Text.RSTemplate.Eval.ContextWriter         
                         ,Text.RSTemplate.Eval.FancyContext
                         ,Text.RSTemplate.Eval.Types
                         ,Text.RSTemplate.Eval.Builtins

@@ -27,7 +27,7 @@ debug _ fn = fn
 
 runEval :: (Monad m, Functor m) => [TemplateCode] -> ContextItem m -> m ByteString
 runEval tm cx = do 
-  ((r,log),_) <- runStack (eval' tm) (ContextState cx builtins)
+  ((r,log),_) <- runStack (eval' tm) (ContextState cx M.empty)
   debug (show r) $ do
     return $ C.concat r
 
@@ -97,24 +97,19 @@ fromMaybeToContext Nothing = ContextNull
 evalExpr :: (Monad m, Functor m) => Expr -> Stack m (ContextItem m)
 evalExpr (Func n a) = do 
   cx <- getCX
-  case M.lookup n builtins of
-    Just f  -> do args <- mapM evalExpr a
-                  lift2 $ f args
-    Nothing -> do ll <- lift2 $ doLookup n cx
-                  case ll of 
-                    Just (ContextFunction f) -> do 
-                      args <- mapM evalExpr a
-                      lift2 $ f args
-                    _ -> error $ (C.unpack n) ++ " is not a function. "
+  ll <- lift2 $ doLookup n cx
+  case ll of 
+    Just (ContextFunction f) -> do 
+      args <- mapM evalExpr a
+      lift2 $ f args
+    _ -> error $ (C.unpack n) ++ " is not a function. "
 
                     
 evalExpr (Var n) = do g <- getCX 
                       r <- lift2 $ doLookup n g
                       case r of
                         Just a -> return a
-                        Nothing-> case M.lookup n builtins of
-                                    Just f  -> lift2 $ f []
-                                    Nothing -> return ContextNull
+                        Nothing-> return ContextNull
 
 evalExpr (NumberLiteral n) = return . bind $ n
 evalExpr (StringLiteral n) = return . bind $ n
