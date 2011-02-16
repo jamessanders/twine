@@ -7,6 +7,8 @@ import Control.Monad.Writer
 import Control.Monad.Identity
 
 import Text.RSTemplate.Eval.Types
+import Text.RSTemplate.Eval.Context
+import Text.RSTemplate.Eval.FancyContext
 import Text.RSTemplate.Eval.Builtins
 import Text.RSTemplate.Parser.Types
 import Data.ByteString.Char8 (ByteString,pack,unpack)
@@ -19,7 +21,9 @@ type Stack m a = StateT (ContextState m) (WriterT [String] m) a
 runStack run state = runWriterT (runStateT run state)
 
 lift2 f = lift $ lift $ f
+
 debug _ fn = fn 
+--debug = trace
 
 runEval :: (Monad m, Functor m) => [TemplateCode] -> ContextItem m -> m ByteString
 runEval tm cx = do 
@@ -43,10 +47,11 @@ eval (Text x) = return x
 
 eval (Slot x) = debug ("evaluating slot: " ++ show x) $ do
   ee  <- evalExpr x
-  case ee of 
-    (ContextValue x) -> return x
-    (ContextNull)    -> return (C.pack "")
-    x                -> return (C.pack . show $ x)
+  st  <- case ee of
+        (ContextPairs [x]) -> lift2 $ getString x
+        (ContextMap x)     -> lift2 $ getString x
+        x -> lift2 $ makeString x
+  return (C.pack st)
     
 
 eval (Assign k e) = debug ("evaluating assign " ++ show k ++ " = " ++ show e) $ do 
@@ -70,9 +75,15 @@ eval (Loop e as bls) = do
     ContextNull -> return (C.pack "")
     a -> runLoop a
   where runLoop (ContextList ls) = fmap (C.concat) $ mapM inner ls
+        
         runLoop (ContextPairs x) = do
           it <- lift2 $ getIterable (head x)
           runLoop (ContextList it)
+        
+        runLoop (ContextMap x) = do
+          it <- lift2 $ getIterable x
+          runLoop (ContextList it)
+
         runLoop x = error $ "Not iterable: " ++ show x
         inner v = do cx <- getCX
                      lift2 $ runEval bls (bind [(as,v)] <+> cx)
@@ -105,8 +116,8 @@ evalExpr (Var n) = do g <- getCX
                                     Just f  -> lift2 $ f []
                                     Nothing -> return ContextNull
 
-evalExpr (NumberLiteral n) = return . ContextInteger $ n
-evalExpr (StringLiteral n) = return . justcx $ n
+evalExpr (NumberLiteral n) = return . bind $ n
+evalExpr (StringLiteral n) = return . bind $ n
 
 evalExpr acc@(Accessor n expr) = do
   g <- getCX
@@ -170,6 +181,7 @@ doLookup' st (ContextPairs (x:xs)) = do
 
 doLookup' st (ContextBool True) = return (Just $ ContextValue $ pack "True")
 doLookup' st (ContextBool False) = return Nothing
+doLookup' st (ContextMap m) = doLookup' st (ContextPairs [m])
 doLookup' st x = error $ "Context not searchable when looking up '" ++ unpack st ++ "' in " ++ show x
 
 ------------------------------------------------------------------------

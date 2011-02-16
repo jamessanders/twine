@@ -123,7 +123,7 @@ stringLiteral = do
 
 numberLiteral = do
   num <- many1 (digit)
-  trace num $ return (NumberLiteral (read num))
+  return (NumberLiteral (read num))
 
 valid = (letter <|> (oneOf "#+-*$/?_") <|> digit)
 
