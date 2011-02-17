@@ -1,68 +1,53 @@
-rstemplate
-----------
+# rstemplate
 
 Simple templates for simple people.
 
+## The Templating Language
 
-Examples:
+Templates are made up of strings of text and template blocks.  There are four 
+kinds of template blocks, each one starts with a bracket (`{`) and an symbol which
+indicates the type of block it is (`+`,`{`,`@`,`?`).  The types of template block are
+as follows.
 
-    This is a template, this is a {{slot}}
+### The generic 'slot' block
+
+'Slots' are simply a way of evaluating an expression in a template and having it rendered
+as a string in ones template, for example.
+
+    Hello user {{user.name}}.
     
-Need to loop over a list? You can do it like so:
+The above template contains the text "Hello user" and slot, when the template is evaluated
+the expression `user.name` is run and the result is rendered into the template.  
+Expressions themselves are covered below.
+
+### The 'iterator' block
+
+'Iterator' blocks allow one to iterate over a object such as a list, referencing each item
+in the list further inside the template blockm.  
+
+    Selected Users:
+    <ul>
+      {@|user <- users|
+        <li>{{user.name}} - {{user.age}}</li>
+      @}
+    </ul>
     
-    {@|i <- mylist| 
-     I'm inside a loop block, this will be repeated for each item in
-     the list, oh and to reference the current item I can do: {{i}}
-    @}
+The example above could be a snippet from an html page.  `users` may return a list, the head
+of the block (`|user <- users|`) indicates each item in the list is brought into scope one by 
+one, bound to variable `user`, for each item in the list the body code block is run and rendered
+into the template.
 
-The syntax `|i <- mylist|` could be read, "i" in "mylist".    
+### The 'conditional' block
 
-You can reference the items in an associative list with dot notation as seen below:
+The conditional block works exactly like an 'if' statement does in most programming languages 
+(there is no else statement though).
 
-    {@|user <- users| Inside the loop I can reference the name attribute like so:
-     {{user.name}}, I can reference items in the outer scope like normal: {{slot}}.
-    @}
+    {?|gt?(user.age, 21)| 
+       Hello user: {{user.name}} 
+    ?}
     
-While rstemplates are meant to be logic-less it is sometimes useful to have simple logic statements inside templates.
-Rstemplate allow this with an conditional block as show below.
+In the example above the expression `gt?(user.age, 21)` is evaluated, if the statement is true
+the following code block is rendered to the template, otherwise it is skipped.  Any statement that
+return a boolean value can be evaluated in the conditional clause of this block (is the example above
+`gt?` is a built-in function, more on that below).
 
-    {?|slot| {{slot}} exist! ?}
-
-Very simple expressions are allowed in many places as shown in the examples below.
-
-    {?|(not slot)| there is nothing to show ?}
-
-    {?|(eq? (head mylist) "anything")| The head of mylist is "anything" ?}
-
-    Hello my name is {{(capitalize name)}}.
-
-
-
-Full Example
-------------
-
-Pretend for this example that we have loaded a json object that looks like the
-following and that we have hooked it into out template context.  
-
-    { users: [{ name: "Dave", age: 25, occupation: "plumber" }      
-             ,{ name: "Mike", age: 32, occupation: "salesman" }     
-             ,{ name: "Pete", age: 14, occupation: "sailor" }     
-             ,{ name: "Greg", age: 29, occupation: "programmer"}] } 
-
-Keep in mind one would of course need to parse the json into Haskell and create an instance
-of the `toContext` typeclass in order for this to work.     
-     
-Now we could display the above with the following template.
-
-    {@|user <- users|                             
-      {?|(lt? user.age 30)|                       
-        Name: {{(capitalize user.name)}}          
-        Age:  {{user.age}}                        
-        Occupation: {{(upper user.occupation }}   
-      ?}                                          
-      {?|(not (lt? user.age 30))|                 
-        User {{user.name}} is over 30.            
-      ?}                                          
-     @}                                           
-     
-     
