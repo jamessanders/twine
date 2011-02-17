@@ -1,6 +1,6 @@
 # twine
 
-Simple templates for simple people.
+Twine is a simple templating engine for haskell that allows developers to reveal just enough information and logic in their templates to get things done.
 
 ## The Templating Language
 
@@ -54,4 +54,17 @@ Assignment blocks allow you to assign a new name to some expression, you probabl
     {| numbers = users.enum |}
     
 The above example would assign `users.enum` to the name `number`.
+
+## Expressions
+
+Expressions are used in template blocks to accesses the various objects exposed in the templates.  The expression language is very simple; every expression is simply a method call on an object (builtin functions are method calls on the global object).  Every value revealed to the template language is an object that can respond to signals (method calls); for example if we where to reveal a list to twine it is accesible as an object which responds to method calls such as `.length` or `.item(2)`.  There are a number of simple builtin objects available in twine, including the global object which has some useful methods for working with objects, these builtins are listed below in the reference documentation (coming soon). 
+
+Here a are a few examples of expressions
+
+    {{ users.length }} returns the length the list 'users'
+    
+    {{ users.item(2).age }} return the age the user at the index        position 2 in the list users.
+
+    {{ not(gt?(users.length, 3)) }} determines if the users list is of length greater then 3 and then negates the boolean returned.
+
 
