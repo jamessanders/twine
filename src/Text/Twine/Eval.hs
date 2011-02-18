@@ -25,7 +25,7 @@ lift2 f = lift $ lift $ f
 debug _ fn = fn 
 --debug = trace
 
-runEval :: (Monad m, Functor m) => [TemplateCode] -> ContextItem m -> m ByteString
+runEval :: (Monad m, Functor m) => Template -> ContextItem m -> m ByteString
 runEval tm cx = do 
   ((r,log),_) <- runStack (eval' tm) (ContextState cx M.empty)
   debug (show r) $ do

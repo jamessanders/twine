@@ -5,6 +5,8 @@ import qualified Data.ByteString.Char8 as C
 type Key  = C.ByteString
 type Name = C.ByteString 
 
+type Template = [TemplateCode]
+
 data Expr = Func Name [Expr] 
           | Var Name 
           | StringLiteral C.ByteString

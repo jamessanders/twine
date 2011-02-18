@@ -60,20 +60,5 @@ data Context m = Context {
 
 ------------------------------------------------------------------------
 
-class (Monad m) => ContextBinding m a | a -> m where
-    binding      :: ByteString -> a -> m (ContextItem m)
-    makeIterable :: a -> m [ContextItem m]
-    makeString   :: a -> m String
-    bind         :: (ContextBinding m a) => a -> ContextItem m
-
-    binding _ _ = return ContextNull
-    makeIterable _ = return []
-    makeString   _ = return ""
-    bind a = ContextMap $ Context {
-      getContext  = (flip binding a),
-      getIterable = makeIterable a,
-      getString   = makeString a
-      }
-
 ------------------------------------------------------------------------
 

@@ -6,9 +6,10 @@
   , OverlappingInstances
   , OverloadedStrings
   , UndecidableInstances
+  , FunctionalDependencies
  #-}
 
-module Text.Twine.Eval.Context where
+module Text.Twine.Eval.Context (emptyContext, ContextBinding (..), (<+>)) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
@@ -17,6 +18,22 @@ import Text.Twine.Eval.Types
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
 import qualified Data.Map as M
+
+class (Monad m) => ContextBinding m a | a -> m where
+    binding      :: ByteString -> a -> m (ContextItem m)
+    makeIterable :: a -> m [ContextItem m]
+    makeString   :: a -> m String
+    bind         :: (ContextBinding m a) => a -> ContextItem m
+
+    binding _ _ = return ContextNull
+    makeIterable _ = return []
+    makeString   _ = return ""
+    bind a = ContextMap $ Context {
+      getContext  = (flip binding a),
+      getIterable = makeIterable a,
+      getString   = makeString a
+      }
+
 
 instance (Monad m) => ContextBinding m (ContextItem m) where
   bind = id

@@ -7,7 +7,7 @@
   , OverloadedStrings
   , UndecidableInstances
  #-}
-module Text.Twine.Eval.ContextWriter where
+module Text.Twine.Eval.ContextWriter (makeContext, (=:)) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
@@ -28,4 +28,4 @@ makeContext cw = do
   mp <- execWriterT cw 
   return $ bind (mp `M.union` builtins)
 
-set k v = tell $ M.fromList [(C.pack k, bind v)]
+k =: v = tell $ M.fromList [(C.pack k, bind v)]

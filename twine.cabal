@@ -1,5 +1,5 @@
 name:                twine
-version:             1.2.1
+version:             1.2.2
 synopsis:            very simple template system
 description:         very simple template system
 category:            Data
@@ -7,6 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              James Sanders
 maintainer:          jimmyjazz14@gmail.com
+homepage:            http://twine.james-sanders.com
 build-depends:       base
 build-type:          Simple
 Cabal-Version:       >= 1.2

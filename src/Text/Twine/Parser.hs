@@ -1,5 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module Text.Twine.Parser where
+module Text.Twine.Parser (loadTemplateFromFile, loadTemplateFromString) where
 
 import Data.ByteString.Char8 (ByteString, pack)
 import Debug.Trace
@@ -152,13 +152,22 @@ parseFile fp = do
     Right res -> return res
     Left  err -> error (show err)
 
-loadTemplate fp = parseFile fp >>= doInclude (takeDirectory fp)
-
 doInclude base ps = foldM ax [] ps 
     where ax a (Incl fs) = do pf <- parseFile (base </> fs) 
                               wi <- doInclude (takeDirectory (base </> fs)) pf
                               return (a ++ wi)
           ax a x         = return (a ++ [x])
+
+------------------------------------------------------------------------
+ 
+loadTemplateFromFile :: FilePath -> IO Template
+loadTemplateFromFile fp = parseFile fp >>= doInclude (takeDirectory fp)
+
+loadTemplateFromString :: String -> Template
+loadTemplateFromString = parseTemplate "theTemplate"
+
+
+
 
 
 
