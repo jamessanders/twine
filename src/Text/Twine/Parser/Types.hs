@@ -1,4 +1,4 @@
-module Text.RSTemplate.Parser.Types where
+module Text.Twine.Parser.Types where
 
 import qualified Data.ByteString.Char8 as C
 

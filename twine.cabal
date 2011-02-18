@@ -19,15 +19,15 @@ Library
                         , filepath >= 1.1.0.3
                         , parsec >= 3
                         , containers >= 0.3                                           
-     Exposed-modules:   Text.RSTemplate
-     Other-modules:     Text.RSTemplate.Parser
-                        ,Text.RSTemplate.Parser.Types
-                        ,Text.RSTemplate.Eval
-                        ,Text.RSTemplate.Eval.Context
-                        ,Text.RSTemplate.Eval.ContextWriter         
-                        ,Text.RSTemplate.Eval.FancyContext
-                        ,Text.RSTemplate.Eval.Types
-                        ,Text.RSTemplate.Eval.Builtins
+     Exposed-modules:   Text.Twine
+     Other-modules:     Text.Twine.Parser
+                        ,Text.Twine.Parser.Types
+                        ,Text.Twine.Eval
+                        ,Text.Twine.Eval.Context
+                        ,Text.Twine.Eval.ContextWriter         
+                        ,Text.Twine.Eval.FancyContext
+                        ,Text.Twine.Eval.Types
+                        ,Text.Twine.Eval.Builtins
 
 
 

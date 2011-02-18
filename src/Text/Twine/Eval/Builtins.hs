@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Text.RSTemplate.Eval.Builtins (builtins) where
+module Text.Twine.Eval.Builtins (builtins) where
 
 import Data.Char
 import Data.List
-import Text.RSTemplate.Eval.Types
-import Text.RSTemplate.Eval.Context
+import Text.Twine.Eval.Types
+import Text.Twine.Eval.Context
 import Control.Exception (assert)
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as M

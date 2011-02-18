@@ -7,15 +7,15 @@
   , OverloadedStrings
   , UndecidableInstances
  #-}
-module Text.RSTemplate.Eval.ContextWriter where
+module Text.Twine.Eval.ContextWriter where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
 import Data.Monoid
-import Text.RSTemplate.Eval.Types
-import Text.RSTemplate.Eval.Context
-import Text.RSTemplate.Eval.FancyContext
-import Text.RSTemplate.Eval.Builtins
+import Text.Twine.Eval.Types
+import Text.Twine.Eval.Context
+import Text.Twine.Eval.FancyContext
+import Text.Twine.Eval.Builtins
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
 import qualified Data.Map as M

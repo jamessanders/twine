@@ -8,12 +8,12 @@
   , UndecidableInstances
  #-}
 
-module Text.RSTemplate.Eval.Context where
+module Text.Twine.Eval.Context where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
 import Data.Monoid
-import Text.RSTemplate.Eval.Types
+import Text.Twine.Eval.Types
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
 import qualified Data.Map as M

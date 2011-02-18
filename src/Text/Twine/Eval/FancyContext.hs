@@ -9,9 +9,9 @@
  #-}
 
 
-module Text.RSTemplate.Eval.FancyContext where
-import Text.RSTemplate.Eval.Types
-import Text.RSTemplate.Eval.Context
+module Text.Twine.Eval.FancyContext where
+import Text.Twine.Eval.Types
+import Text.Twine.Eval.Context
 
 instance (ContextBinding m a) => ContextBinding m [a] where
   bind = bind . CXListLike . map bind 

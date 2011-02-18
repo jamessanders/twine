@@ -1,12 +1,12 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module Text.RSTemplate.Parser where
+module Text.Twine.Parser where
 
 import Data.ByteString.Char8 (ByteString, pack)
 import Debug.Trace
 import System.FilePath
 import Text.Parsec hiding (token)
 import Text.Parsec.ByteString
-import Text.RSTemplate.Parser.Types
+import Text.Twine.Parser.Types
 import Control.Monad
 
 token t = do

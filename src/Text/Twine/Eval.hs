@@ -1,16 +1,16 @@
-module Text.RSTemplate.Eval (runEval) where
+module Text.Twine.Eval (runEval) where
 
---import Text.RSTemplate
+--import Text.Twine
 
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Identity
 
-import Text.RSTemplate.Eval.Types
-import Text.RSTemplate.Eval.Context
-import Text.RSTemplate.Eval.FancyContext
-import Text.RSTemplate.Eval.Builtins
-import Text.RSTemplate.Parser.Types
+import Text.Twine.Eval.Types
+import Text.Twine.Eval.Context
+import Text.Twine.Eval.FancyContext
+import Text.Twine.Eval.Builtins
+import Text.Twine.Parser.Types
 import Data.ByteString.Char8 (ByteString,pack,unpack)
 import qualified Data.ByteString.Char8 as C
 import Debug.Trace
