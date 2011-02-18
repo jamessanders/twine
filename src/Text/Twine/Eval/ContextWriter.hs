@@ -16,12 +16,14 @@ import Text.Twine.Eval.Types
 import Text.Twine.Eval.Context
 import Text.Twine.Eval.FancyContext
 import Text.Twine.Eval.Builtins
+import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
+import Data.Map (Map)
 import qualified Data.Map as M
 
-
-type ContextWriter m = WriterT (M.Map C.ByteString (ContextItem m)) m () 
+type ContextMapper m = Map ByteString (ContextItem m)
+type ContextWriter m = WriterT (ContextMapper m)  m () 
 
 makeContext :: (Monad m) => ContextWriter m -> m (ContextItem m) 
 makeContext cw = do
