@@ -57,7 +57,7 @@ The above example would assign `users.enum` to the name `number`.
 
 ## Expressions
 
-Expressions are used in template blocks to accesses the various objects exposed in the templates.  The expression language is very simple; every expression is simply a method call on an object (builtin functions are method calls on the global object).  Every value revealed to the template language is an object that can respond to signals (method calls); for example if we where to reveal a list to twine it is accesible as an object which responds to method calls such as `.length` or `.item(2)`.  There are a number of simple builtin objects available in twine, including the global object which has some useful methods for working with objects, these builtins are listed below in the reference documentation (coming soon). 
+Expressions are used in template blocks to accesses the various objects exposed in the templates.  The expression language is very simple; every expression is simply a method call on an object (builtin functions are method calls on the global object).  Every value revealed to the template language is an object that can respond to signals (method calls); for example if we where to reveal a list to twine it is accesible as an object which responds to method calls such as `.length` or `.item(2)`.  There are a number of simple builtin objects available in twine, including the global object which has some useful methods for working with objects, these builtins are listed below in the reference documentation (coming soon).  There are also two types of literals that can currently be used in templates, string literal like "Hello World" and integers such as 1, 2, 3 and 4.
 
 Here a are a few examples of expressions
 
@@ -68,3 +68,38 @@ Here a are a few examples of expressions
     {{ not(gt?(users.length, 3)) }} determines if the users list is of length greater then 3 and then negates the boolean returned.
 
 
+## Interfacing with Haskell
+
+In order to present useful data to a template one must construct a context to evaluate the template in.  This can be done easier with the `ContextWriter` monad which is a simply Writer monad that builds a context.  You can run the `ContextWriter` monad with the `makeContext` function as show in the example below.
+
+    context <- makeContext $ do
+      "title"  =: "Test Page"
+      "author" =: "James"
+      "users"  =: ["Tom", "Pete", "Dave"]
+      
+    evalTemplate "test.tmpl" context >>= print
+
+The above example would bind three "objects" into our template, then the context is used when evaluating the template "test.tmpl".  Its that simple.
+
+In the example above we bind two String type values and a value of the type [String] into our template but, we can bind any sort of type container into out template so long as it is part of the `ContextBinding` typeclass as shown in the following example...
+
+    data User = User {
+        getName :: String,
+        getAge  :: Int,
+        getOccupation :: String
+    }
+    
+    class (Monad m) => ContextBinding m User where
+        binding "name" = return . bind . getName
+        binding "age"  = return . bind . getAge
+        binding "job"  = return . bind . getOccupation
+        makeString _ = return "<User>"
+        
+In the above example we have a custom type `User` which we make part of the `ContextBinding` typeclass.  When a property is reference by our template for example `{{user.name}}` the `binding` function is called with the property name and the object to lookup the property on, so `user.name` would cause the iterpretor to called `binding "name" user`.  Whatever the binding function returns is what is returned to out template.  When the interpretor is ready to ready to render the template then the `makeString` function is called on the object.  We can now use anything of the type `User` in our context builder as shown below...
+
+    let user = User "Peter" 24 "Monkey Salesman"
+    context <- makeContext $ do
+        "user" =: user
+    evalTemplate "test.tmpl" context
+    
+Thats all there is to it!
