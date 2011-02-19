@@ -13,10 +13,10 @@ module Text.Twine.Eval.FancyContext where
 import Text.Twine.Eval.Types
 import Text.Twine.Eval.Context
 
-instance (ContextBinding m a) => ContextBinding m [a] where
+instance (TemplateInterface m a) => TemplateInterface m [a] where
   bind = bind . CXListLike . map bind 
 
-instance (Monad m) => ContextBinding m (CXListLike m) where
+instance (Monad m) => TemplateInterface m (CXListLike m) where
   binding "length" = mbind . length . unCXListLike
   binding "head"   = mbind . head . unCXListLike
   binding "tail"   = mbind . tail . unCXListLike
@@ -39,13 +39,13 @@ instance (Monad m) => ContextBinding m (CXListLike m) where
 
 ------------------------------------------------------------------------
 
-instance (Monad m) => ContextBinding m Int where
+instance (Monad m) => TemplateInterface m Int where
   bind = bind . CXInteger . fromIntegral
   
-instance (Monad m) => ContextBinding m Integer where
+instance (Monad m) => TemplateInterface m Integer where
   bind = bind . CXInteger
 
-instance (Monad m) => ContextBinding m CXInteger where
+instance (Monad m) => TemplateInterface m CXInteger where
   makeString = return . show . unCXInteger
   binding "toInteger" = return . TwineInteger . unCXInteger  
   binding "even?" = mbind . even . unCXInteger
