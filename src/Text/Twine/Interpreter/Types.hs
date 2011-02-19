@@ -9,7 +9,7 @@
   , FunctionalDependencies
  #-}
 
-module Text.Twine.Eval.Types where
+module Text.Twine.Interpreter.Types where
 
 import qualified Data.ByteString.Char8 as C
 import Data.ByteString.Char8 (ByteString,pack)

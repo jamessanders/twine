@@ -9,12 +9,12 @@
   , FunctionalDependencies
  #-}
 
-module Text.Twine.Eval.Context (emptyContext, TemplateInterface (..)) where
+module Text.Twine.Interpreter.Context (emptyContext, TemplateInterface (..)) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
 import Data.Monoid
-import Text.Twine.Eval.Types
+import Text.Twine.Interpreter.Types
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer
 import qualified Data.Map as M

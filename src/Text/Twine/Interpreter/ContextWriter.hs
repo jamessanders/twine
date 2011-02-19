@@ -7,15 +7,15 @@
   , OverloadedStrings
   , UndecidableInstances
  #-}
-module Text.Twine.Eval.ContextWriter (makeContext, (=:)) where
+module Text.Twine.Interpreter.ContextWriter (makeContext, (=:)) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
 import Data.Monoid
-import Text.Twine.Eval.Types
-import Text.Twine.Eval.Context
-import Text.Twine.Eval.FancyContext
-import Text.Twine.Eval.Builtins
+import Text.Twine.Interpreter.Types
+import Text.Twine.Interpreter.Context
+import Text.Twine.Interpreter.FancyContext
+import Text.Twine.Interpreter.Builtins
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as C
 import Control.Monad.Writer

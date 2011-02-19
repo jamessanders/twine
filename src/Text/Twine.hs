@@ -1,17 +1,17 @@
 module Text.Twine (module Text.Twine.Parser
-                  ,module Text.Twine.Eval
-                  ,module Text.Twine.Eval.Context
-                  ,module Text.Twine.Eval.FancyContext
-                  ,module Text.Twine.Eval.ContextWriter
+                  ,module Text.Twine.Interpreter
+                  ,module Text.Twine.Interpreter.Context
+                  ,module Text.Twine.Interpreter.FancyContext
+                  ,module Text.Twine.Interpreter.ContextWriter
                   ,evalTemplate)
 where
 
 import Text.Twine.Parser
-import Text.Twine.Eval.Types
-import Text.Twine.Eval.Context
-import Text.Twine.Eval.FancyContext
-import Text.Twine.Eval.ContextWriter
-import Text.Twine.Eval
+import Text.Twine.Interpreter.Types
+import Text.Twine.Interpreter.Context
+import Text.Twine.Interpreter.FancyContext
+import Text.Twine.Interpreter.ContextWriter
+import Text.Twine.Interpreter
 
 evalTemplate template context = do 
   templ <- loadTemplateFromFile template

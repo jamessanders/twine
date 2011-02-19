@@ -1,5 +1,5 @@
 {-# LANGUAGE  NoMonomorphismRestriction #-}
-module Text.Twine.Eval (runEval) where
+module Text.Twine.Interpreter (runEval) where
 
 --import Text.Twine
 
@@ -7,10 +7,10 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Identity
 
-import Text.Twine.Eval.Types
-import Text.Twine.Eval.Context
-import Text.Twine.Eval.FancyContext
-import Text.Twine.Eval.Builtins
+import Text.Twine.Interpreter.Types
+import Text.Twine.Interpreter.Context
+import Text.Twine.Interpreter.FancyContext
+import Text.Twine.Interpreter.Builtins
 import Text.Twine.Parser.Types
 import Data.ByteString.Char8 (ByteString,pack,unpack)
 import qualified Data.ByteString.Char8 as C

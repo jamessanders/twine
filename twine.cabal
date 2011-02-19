@@ -23,12 +23,12 @@ Library
      Exposed-modules:   Text.Twine
      Other-modules:     Text.Twine.Parser
                         ,Text.Twine.Parser.Types
-                        ,Text.Twine.Eval
-                        ,Text.Twine.Eval.Context
-                        ,Text.Twine.Eval.ContextWriter         
-                        ,Text.Twine.Eval.FancyContext
-                        ,Text.Twine.Eval.Types
-                        ,Text.Twine.Eval.Builtins
+                        ,Text.Twine.Interpreter
+                        ,Text.Twine.Interpreter.Context
+                        ,Text.Twine.Interpreter.ContextWriter         
+                        ,Text.Twine.Interpreter.FancyContext
+                        ,Text.Twine.Interpreter.Types
+                        ,Text.Twine.Interpreter.Builtins
 
 
 

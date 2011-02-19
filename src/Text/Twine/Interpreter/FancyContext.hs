@@ -9,9 +9,9 @@
  #-}
 
 
-module Text.Twine.Eval.FancyContext where
-import Text.Twine.Eval.Types
-import Text.Twine.Eval.Context
+module Text.Twine.Interpreter.FancyContext where
+import Text.Twine.Interpreter.Types
+import Text.Twine.Interpreter.Context
 
 instance (TemplateInterface m a) => TemplateInterface m [a] where
   bind = bind . CXListLike . map bind 
