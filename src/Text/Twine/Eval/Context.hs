@@ -20,10 +20,10 @@ import Control.Monad.Writer
 import qualified Data.Map as M
 
 class (Monad m) => ContextBinding m a | a -> m where
-    binding      :: ByteString -> a -> m (ContextItem m)
-    makeIterable :: a -> m [ContextItem m]
+    binding      :: ByteString -> a -> m (TwineElement m)
+    makeIterable :: a -> m [TwineElement m]
     makeString   :: a -> m String
-    bind         :: (ContextBinding m a) => a -> ContextItem m
+    bind         :: (ContextBinding m a) => a -> TwineElement m
 
     binding _ _ = return ContextNull
     makeIterable _ = return []
@@ -35,11 +35,11 @@ class (Monad m) => ContextBinding m a | a -> m where
       }
 
 
-instance (Monad m) => ContextBinding m (ContextItem m) where
+instance (Monad m) => ContextBinding m (TwineElement m) where
   bind = id
   makeString = return . show
 
-instance (Monad m) => ContextBinding m ([ContextItem m] -> m (ContextItem m)) where
+instance (Monad m) => ContextBinding m ([TwineElement m] -> m (TwineElement m)) where
   bind = ContextFunction
 
 instance (Monad m) => ContextBinding m EmptyContext 
@@ -48,7 +48,7 @@ instance (Monad m, ContextBinding m a) => ContextBinding m (Maybe a) where
   bind (Just a)  = bind a
   bind Nothing   = ContextNull
 
-instance (Monad m) => ContextBinding m [(ByteString,ContextItem m)] where
+instance (Monad m) => ContextBinding m [(ByteString,TwineElement m)] where
   binding k = return . fromMaybe ContextNull . lookup k
 
 instance (Monad m) => ContextBinding m String where
@@ -60,9 +60,9 @@ instance (Monad m) => ContextBinding m ByteString where
 instance (Monad m) => ContextBinding m Bool where
   bind = ContextBool
 
-instance (Monad m) => ContextBinding m (M.Map ByteString (ContextItem m)) where
+instance (Monad m) => ContextBinding m (M.Map ByteString (TwineElement m)) where
   binding k = return . fromMaybe (ContextNull) . M.lookup k
 
-emptyContext :: (Monad m) => ContextItem m
+emptyContext :: (Monad m) => TwineElement m
 emptyContext = bind EmptyContext
 

@@ -21,7 +21,7 @@ type Stack m a = StateT (ContextState m) (WriterT [String] m) a
 
 -- simpleContext
 
-foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
+foldCX :: (Monad m) => [TwineElement m] -> TwineElement m
 foldCX = foldl (<+>) emptyContext
 
 -- Context Writer Monad --
@@ -41,17 +41,17 @@ lift2 f = lift $ lift $ f
 debug _ fn = fn 
 --debug = trace
 
-runEval :: (Monad m, Functor m) => Template -> ContextItem m -> m ByteString
+runEval :: (Monad m, Functor m) => Template -> TwineElement m -> m ByteString
 runEval tm cx = do 
   ((r,log),_) <- runStack (eval' tm) (ContextState cx M.empty)
   debug (show r) $ do
     return $ C.concat r
 
-getCX :: (Monad m) => Stack m (ContextItem m)
+getCX :: (Monad m) => Stack m (TwineElement m)
 getCX = do s <- get 
            return (getContextState s)
 
-putCX :: (Monad m) => ContextItem m -> Stack m ()
+putCX :: (Monad m) => TwineElement m -> Stack m ()
 putCX cx = do s <- get
               put $ s { getContextState = cx }
 
@@ -110,7 +110,7 @@ fromMaybeToContext (Just a)  = a
 fromMaybeToContext Nothing = ContextNull
 
 
-evalExpr :: (Monad m, Functor m) => Expr -> Stack m (ContextItem m)
+evalExpr :: (Monad m, Functor m) => Expr -> Stack m (TwineElement m)
 evalExpr (Func n a) = do 
   cx <- getCX
   ll <- lift2 $ doLookup n cx
@@ -134,7 +134,7 @@ evalExpr acc@(Accessor n expr) = do
   g <- getCX
   accessObjectInContext g acc
   
-accessObjectInContext :: (Monad m, Functor m) => ContextItem m -> Expr -> Stack m (ContextItem m)
+accessObjectInContext :: (Monad m, Functor m) => TwineElement m -> Expr -> Stack m (TwineElement m)
 accessObjectInContext context (Accessor (Var n) expr) = do
   cx <- lift2 $ doLookup' n context
   case cx of

@@ -18,30 +18,30 @@ import Control.Monad.Identity
 import Control.Monad.Trans
 import qualified Data.Map as M
 
-data ContextItem m = ContextPairs [Context m]
-                   | ContextMap (Context m)
-                   | ContextValue ByteString
-                   | ContextInteger Integer
-                   | ContextBool Bool
-                   | ContextNull
-                   | ContextList [ContextItem m]
-                   | ContextFunction ([ContextItem m] -> m (ContextItem m))
+data TwineElement m = ContextPairs [Context m]
+                    | ContextMap (Context m)
+                    | ContextValue ByteString
+                    | ContextInteger Integer
+                    | ContextBool Bool
+                    | ContextNull
+                    | ContextList [TwineElement m]
+                    | ContextFunction ([TwineElement m] -> m (TwineElement m))
 
-newtype CXListLike m = CXListLike { unCXListLike :: [ContextItem m] }
+newtype CXListLike m = CXListLike { unCXListLike :: [TwineElement m] }
 newtype CXInteger    = CXInteger  { unCXInteger  :: Integer }
 
-type BuiltinFunc m = [ContextItem m] -> m (ContextItem m)
+type BuiltinFunc m = [TwineElement m] -> m (TwineElement m)
 
-data ContextState m = ContextState { getContextState :: (ContextItem m)
+data ContextState m = ContextState { getContextState :: (TwineElement m)
                                    , getContextFuns  :: M.Map C.ByteString (BuiltinFunc m) }
 
 
-instance (Monad m) => Eq (ContextItem m) where
+instance (Monad m) => Eq (TwineElement m) where
     (ContextValue x) == (ContextValue y) = x == y
     (ContextList  x) == (ContextList y)  = x == y
     _ == _ = error "Unable to determine equality."
 
-instance (Monad m) => Show (ContextItem m) where
+instance (Monad m) => Show (TwineElement m) where
     show (ContextValue x) = C.unpack x
     show (ContextPairs _) = "((ContextMap))"
     show (ContextMap _)   = "((ContextMap))"
@@ -53,12 +53,9 @@ instance (Monad m) => Show (ContextItem m) where
 data EmptyContext = EmptyContext
 
 data Context m = Context { 
-  getContext    :: ByteString -> m (ContextItem m),
-  getIterable   :: m [ContextItem m],
+  getContext    :: ByteString -> m (TwineElement m),
+  getIterable   :: m [TwineElement m],
   getString     :: m String
 }
 
-------------------------------------------------------------------------
-
-------------------------------------------------------------------------
 

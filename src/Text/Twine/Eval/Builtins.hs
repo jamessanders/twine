@@ -11,5 +11,5 @@ import qualified Data.Map as M
 
 myNot [ContextBool b] = return . bind $ not b
 
-builtins :: (Monad m) => M.Map C.ByteString (ContextItem m)
+builtins :: (Monad m) => M.Map C.ByteString (TwineElement m)
 builtins = M.fromList [("not", ContextFunction myNot)]

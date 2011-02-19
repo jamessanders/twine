@@ -22,10 +22,10 @@ import Control.Monad.Writer
 import Data.Map (Map)
 import qualified Data.Map as M
 
-type ContextMapper m = Map ByteString (ContextItem m)
+type ContextMapper m = Map ByteString (TwineElement m)
 type ContextWriter m = WriterT (ContextMapper m)  m () 
 
-makeContext :: (Monad m) => ContextWriter m -> m (ContextItem m) 
+makeContext :: (Monad m) => ContextWriter m -> m (TwineElement m) 
 makeContext cw = do
   mp <- execWriterT cw 
   return $ bind (mp `M.union` builtins)
