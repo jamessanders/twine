@@ -20,16 +20,16 @@ import Control.Monad.Writer
 import qualified Data.Map as M
 
 class (Monad m) => TemplateInterface m a | a -> m where
-    binding      :: ByteString -> a -> m (TwineElement m)
+    property      :: ByteString -> a -> m (TwineElement m)
     makeIterable :: a -> m [TwineElement m]
     makeString   :: a -> m String
     bind         :: (TemplateInterface m a) => a -> TwineElement m
 
-    binding _ _ = return TwineNull
+    property _ _ = return TwineNull
     makeIterable _ = return []
     makeString   _ = return ""
     bind a = TwineObject $ Context {
-      getContext  = (flip binding a),
+      getContext  = (flip property a),
       getIterable = makeIterable a,
       getString   = makeString a
       }
@@ -49,7 +49,7 @@ instance (Monad m, TemplateInterface m a) => TemplateInterface m (Maybe a) where
   bind Nothing   = TwineNull
 
 instance (Monad m) => TemplateInterface m [(ByteString,TwineElement m)] where
-  binding k = return . fromMaybe TwineNull . lookup k
+  property k = return . fromMaybe TwineNull . lookup k
 
 instance (Monad m) => TemplateInterface m String where
   bind = TwineString . C.pack
@@ -61,7 +61,7 @@ instance (Monad m) => TemplateInterface m Bool where
   bind = TwineBool
 
 instance (Monad m) => TemplateInterface m (M.Map ByteString (TwineElement m)) where
-  binding k = return . fromMaybe (TwineNull) . M.lookup k
+  property k = return . fromMaybe (TwineNull) . M.lookup k
 
 emptyContext :: (Monad m) => TwineElement m
 emptyContext = bind EmptyContext

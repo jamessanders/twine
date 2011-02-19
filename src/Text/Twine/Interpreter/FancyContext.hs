@@ -17,20 +17,20 @@ instance (TemplateInterface m a) => TemplateInterface m [a] where
   bind = bind . CXListLike . map bind 
 
 instance (Monad m) => TemplateInterface m (CXListLike m) where
-  binding "length" = mbind . length . unCXListLike
-  binding "head"   = mbind . head . unCXListLike
-  binding "tail"   = mbind . tail . unCXListLike
-  binding "init"   = mbind . init . unCXListLike
-  binding "last"   = mbind . last . unCXListLike
-  binding "item"   = \x -> return $ TwineFunction (\[n] -> do
+  property "length" = mbind . length . unCXListLike
+  property "head"   = mbind . head . unCXListLike
+  property "tail"   = mbind . tail . unCXListLike
+  property "init"   = mbind . init . unCXListLike
+  property "last"   = mbind . last . unCXListLike
+  property "item"   = \x -> return $ TwineFunction (\[n] -> do
                                                        i <- cxToInteger n
                                                        mbind (unCXListLike x !! fromIntegral i))
                            
-  binding "take"   = \x -> return $ TwineFunction (\[n] -> do
+  property "take"   = \x -> return $ TwineFunction (\[n] -> do
                                                         i <- cxToInteger n
                                                         mbind . take (fromIntegral i) $ unCXListLike x)
   
-  binding "drop"   = \x -> return $ TwineFunction (\[n] -> do
+  property "drop"   = \x -> return $ TwineFunction (\[n] -> do
                                                         i <- cxToInteger n
                                                         mbind . drop (fromIntegral i) $ unCXListLike x)
   
@@ -47,14 +47,14 @@ instance (Monad m) => TemplateInterface m Integer where
 
 instance (Monad m) => TemplateInterface m CXInteger where
   makeString = return . show . unCXInteger
-  binding "toInteger" = return . TwineInteger . unCXInteger  
-  binding "even?" = mbind . even . unCXInteger
-  binding "odd?"  = mbind . odd  . unCXInteger
-  binding "add"   = \a-> return $ TwineFunction (\[n]-> do 
+  property "toInteger" = return . TwineInteger . unCXInteger  
+  property "even?" = mbind . even . unCXInteger
+  property "odd?"  = mbind . odd  . unCXInteger
+  property "add"   = \a-> return $ TwineFunction (\[n]-> do 
                                                       i <- cxToInteger n
                                                       mbind $ (unCXInteger a + i)
                                                   )
-  binding "subtract" = \a-> return $ TwineFunction (\[n]-> do 
+  property "subtract" = \a-> return $ TwineFunction (\[n]-> do 
                                                       i <- cxToInteger n
                                                       mbind $ (unCXInteger a - i)
                                                      )
