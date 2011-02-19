@@ -9,7 +9,7 @@
   , FunctionalDependencies
  #-}
 
-module Text.Twine.Eval.Context (emptyContext, ContextBinding (..), (<+>)) where
+module Text.Twine.Eval.Context (emptyContext, ContextBinding (..)) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
@@ -66,16 +66,3 @@ instance (Monad m) => ContextBinding m (M.Map ByteString (ContextItem m)) where
 emptyContext :: (Monad m) => ContextItem m
 emptyContext = bind EmptyContext
 
--- simpleContext
-
-foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
-foldCX = foldl (<+>) emptyContext
-
--- Context Writer Monad --
-
-mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
-mergeCXP (ContextList a)  (ContextList b)  = ContextList (a ++ b)
-mergeCXP (ContextMap a)   x   = ContextPairs [a] `mergeCXP` x
-mergeCXP x (ContextMap a)   = x `mergeCXP` ContextPairs [a]
-mergeCXP a b = error $ "Cannot merge " ++ show a ++ " and " ++ show b
-(<+>) = mergeCXP

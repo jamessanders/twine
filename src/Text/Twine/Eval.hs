@@ -1,3 +1,4 @@
+{-# LANGUAGE  NoMonomorphismRestriction #-}
 module Text.Twine.Eval (runEval) where
 
 --import Text.Twine
@@ -17,6 +18,21 @@ import Debug.Trace
 import qualified Data.Map as M
 
 type Stack m a = StateT (ContextState m) (WriterT [String] m) a
+
+-- simpleContext
+
+foldCX :: (Monad m) => [ContextItem m] -> ContextItem m
+foldCX = foldl (<+>) emptyContext
+
+-- Context Writer Monad --
+
+mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
+mergeCXP (ContextList a)  (ContextList b)  = ContextList (a ++ b)
+mergeCXP (ContextMap a)   x   = ContextPairs [a] `mergeCXP` x
+mergeCXP x (ContextMap a)   = x `mergeCXP` ContextPairs [a]
+mergeCXP a b = error $ "Cannot merge " ++ show a ++ " and " ++ show b
+(<+>) = mergeCXP
+
 
 runStack run state = runWriterT (runStateT run state)
 
