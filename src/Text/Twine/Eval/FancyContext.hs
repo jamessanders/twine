@@ -22,15 +22,15 @@ instance (Monad m) => ContextBinding m (CXListLike m) where
   binding "tail"   = mbind . tail . unCXListLike
   binding "init"   = mbind . init . unCXListLike
   binding "last"   = mbind . last . unCXListLike
-  binding "item"   = \x -> return $ ContextFunction (\[n] -> do
+  binding "item"   = \x -> return $ TwineFunction (\[n] -> do
                                                        i <- cxToInteger n
                                                        mbind (unCXListLike x !! fromIntegral i))
                            
-  binding "take"   = \x -> return $ ContextFunction (\[n] -> do
+  binding "take"   = \x -> return $ TwineFunction (\[n] -> do
                                                         i <- cxToInteger n
                                                         mbind . take (fromIntegral i) $ unCXListLike x)
   
-  binding "drop"   = \x -> return $ ContextFunction (\[n] -> do
+  binding "drop"   = \x -> return $ TwineFunction (\[n] -> do
                                                         i <- cxToInteger n
                                                         mbind . drop (fromIntegral i) $ unCXListLike x)
   
@@ -47,28 +47,28 @@ instance (Monad m) => ContextBinding m Integer where
 
 instance (Monad m) => ContextBinding m CXInteger where
   makeString = return . show . unCXInteger
-  binding "toInteger" = return . ContextInteger . unCXInteger  
+  binding "toInteger" = return . TwineInteger . unCXInteger  
   binding "even?" = mbind . even . unCXInteger
   binding "odd?"  = mbind . odd  . unCXInteger
-  binding "add"   = \a-> return $ ContextFunction (\[n]-> do 
+  binding "add"   = \a-> return $ TwineFunction (\[n]-> do 
                                                       i <- cxToInteger n
                                                       mbind $ (unCXInteger a + i)
                                                   )
-  binding "subtract" = \a-> return $ ContextFunction (\[n]-> do 
+  binding "subtract" = \a-> return $ TwineFunction (\[n]-> do 
                                                       i <- cxToInteger n
                                                       mbind $ (unCXInteger a - i)
                                                      )
 
 mbind = return . bind
   
-signal sig (ContextMap obj) = (getContext obj) sig 
+signal sig (TwineObject obj) = (getContext obj) sig 
 
-cxToInteger (ContextInteger i) = return i
-cxToInteger cm@(ContextMap obj) = do
+cxToInteger (TwineInteger i) = return i
+cxToInteger cm@(TwineObject obj) = do
   v <- signal "toInteger" cm
   case v of
-    ContextInteger i -> return i
-    ContextNull -> error "expected number but got null value"
+    TwineInteger i -> return i
+    TwineNull -> error "expected number but got null value"
     _ -> error ("'" ++ show v ++ "' is not a number")
 
   

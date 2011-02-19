@@ -26,10 +26,10 @@ foldCX = foldl (<+>) emptyContext
 
 -- Context Writer Monad --
 
-mergeCXP (ContextPairs a) (ContextPairs b) = ContextPairs (a ++ b)
-mergeCXP (ContextList a)  (ContextList b)  = ContextList (a ++ b)
-mergeCXP (ContextMap a)   x   = ContextPairs [a] `mergeCXP` x
-mergeCXP x (ContextMap a)   = x `mergeCXP` ContextPairs [a]
+mergeCXP (TwineObjectList a) (TwineObjectList b) = TwineObjectList (a ++ b)
+mergeCXP (TwineList a)  (TwineList b)  = TwineList (a ++ b)
+mergeCXP (TwineObject a)   x   = TwineObjectList [a] `mergeCXP` x
+mergeCXP x (TwineObject a)   = x `mergeCXP` TwineObjectList [a]
 mergeCXP a b = error $ "Cannot merge " ++ show a ++ " and " ++ show b
 (<+>) = mergeCXP
 
@@ -64,8 +64,8 @@ eval (Text x) = return x
 eval (Slot x) = debug ("evaluating slot: " ++ show x) $ do
   ee  <- evalExpr x
   st  <- case ee of
-        (ContextPairs [x]) -> lift2 $ getString x
-        (ContextMap x)     -> lift2 $ getString x
+        (TwineObjectList [x]) -> lift2 $ getString x
+        (TwineObject x)     -> lift2 $ getString x
         x -> lift2 $ makeString x
   return (C.pack st)
     
@@ -80,25 +80,25 @@ eval (Cond e bls) = do
   ee <- evalExpr e
   st <- getCX
   case ee of
-    (ContextNull) -> return (C.pack "") 
-    (ContextBool False) -> return (C.pack "")
+    (TwineNull) -> return (C.pack "") 
+    (TwineBool False) -> return (C.pack "")
     _  ->  lift2 $ runEval bls st
 
 
 eval (Loop e as bls) = do
   ee <- evalExpr e
   case ee of 
-    ContextNull -> return (C.pack "")
+    TwineNull -> return (C.pack "")
     a -> runLoop a
-  where runLoop (ContextList ls) = fmap (C.concat) $ mapM inner ls
+  where runLoop (TwineList ls) = fmap (C.concat) $ mapM inner ls
         
-        runLoop (ContextPairs x) = do
+        runLoop (TwineObjectList x) = do
           it <- lift2 $ getIterable (head x)
-          runLoop (ContextList it)
+          runLoop (TwineList it)
         
-        runLoop (ContextMap x) = do
+        runLoop (TwineObject x) = do
           it <- lift2 $ getIterable x
-          runLoop (ContextList it)
+          runLoop (TwineList it)
 
         runLoop x = error $ "Not iterable: " ++ show x
         inner v = do cx <- getCX
@@ -107,7 +107,7 @@ eval (Loop e as bls) = do
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 
 fromMaybeToContext (Just a)  = a
-fromMaybeToContext Nothing = ContextNull
+fromMaybeToContext Nothing = TwineNull
 
 
 evalExpr :: (Monad m, Functor m) => Expr -> Stack m (TwineElement m)
@@ -115,7 +115,7 @@ evalExpr (Func n a) = do
   cx <- getCX
   ll <- lift2 $ doLookup n cx
   case ll of 
-    Just (ContextFunction f) -> do 
+    Just (TwineFunction f) -> do 
       args <- mapM evalExpr a
       lift2 $ f args
     _ -> error $ (C.unpack n) ++ " is not a function. "
@@ -125,7 +125,7 @@ evalExpr (Var n) = do g <- getCX
                       r <- lift2 $ doLookup n g
                       case r of
                         Just a -> return a
-                        Nothing-> return ContextNull
+                        Nothing-> return TwineNull
 
 evalExpr (NumberLiteral n) = return . bind $ n
 evalExpr (StringLiteral n) = return . bind $ n
@@ -147,7 +147,7 @@ accessObjectInContext context (Accessor (Func n a) expr) = do
     Nothing -> error "ERROR"
     Just cx' ->
       case cx' of
-        ContextFunction f -> do
+        TwineFunction f -> do
           args <- mapM evalExpr a
           z <- lift2 $ f args
           accessObjectInContext z expr
@@ -166,7 +166,7 @@ accessObjectInContext context (Func n args) = do
     Nothing -> error "Error"
     Just cx' -> do
       case cx' of
-        ContextFunction f -> do 
+        TwineFunction f -> do 
           args' <- mapM evalExpr args
           lift2 $ f args'
         _ -> error "Not a callable method"
@@ -182,17 +182,17 @@ doLookup k v = let parts = C.split '.' k
                           Just a  -> aux xs a
                           Nothing -> return Nothing
 
-doLookup' _ (ContextPairs []) = return Nothing
-doLookup' st (ContextPairs (x:xs)) = do
+doLookup' _ (TwineObjectList []) = return Nothing
+doLookup' st (TwineObjectList (x:xs)) = do
     let cx = getContext x
     s <- cx st
     case s of
-      ContextNull -> doLookup' st (ContextPairs xs)
+      TwineNull -> doLookup' st (TwineObjectList xs)
       a  -> return (Just a)
 
-doLookup' st (ContextBool True) = return (Just $ ContextValue $ pack "True")
-doLookup' st (ContextBool False) = return Nothing
-doLookup' st (ContextMap m) = doLookup' st (ContextPairs [m])
+doLookup' st (TwineBool True) = return (Just $ TwineString $ pack "True")
+doLookup' st (TwineBool False) = return Nothing
+doLookup' st (TwineObject m) = doLookup' st (TwineObjectList [m])
 doLookup' st x = error $ "Context not searchable when looking up '" ++ unpack st ++ "' in " ++ show x
 
 ------------------------------------------------------------------------

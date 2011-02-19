@@ -18,14 +18,14 @@ import Control.Monad.Identity
 import Control.Monad.Trans
 import qualified Data.Map as M
 
-data TwineElement m = ContextPairs [Context m]
-                    | ContextMap (Context m)
-                    | ContextValue ByteString
-                    | ContextInteger Integer
-                    | ContextBool Bool
-                    | ContextNull
-                    | ContextList [TwineElement m]
-                    | ContextFunction ([TwineElement m] -> m (TwineElement m))
+data TwineElement m = TwineObjectList [Context m]
+                    | TwineObject (Context m)
+                    | TwineString ByteString
+                    | TwineInteger Integer
+                    | TwineBool Bool
+                    | TwineNull
+                    | TwineList [TwineElement m]
+                    | TwineFunction ([TwineElement m] -> m (TwineElement m))
 
 newtype CXListLike m = CXListLike { unCXListLike :: [TwineElement m] }
 newtype CXInteger    = CXInteger  { unCXInteger  :: Integer }
@@ -37,18 +37,18 @@ data ContextState m = ContextState { getContextState :: (TwineElement m)
 
 
 instance (Monad m) => Eq (TwineElement m) where
-    (ContextValue x) == (ContextValue y) = x == y
-    (ContextList  x) == (ContextList y)  = x == y
+    (TwineString x) == (TwineString y) = x == y
+    (TwineList  x) == (TwineList y)  = x == y
     _ == _ = error "Unable to determine equality."
 
 instance (Monad m) => Show (TwineElement m) where
-    show (ContextValue x) = C.unpack x
-    show (ContextPairs _) = "((ContextMap))"
-    show (ContextMap _)   = "((ContextMap))"
-    show (ContextList  _) = "((ContextList))"
-    show (ContextBool x)  = show x
-    show (ContextNull)    = ""
-    show (ContextFunction _) = "((ContextFunction))"
+    show (TwineString x) = C.unpack x
+    show (TwineObjectList _) = "((TwineObject))"
+    show (TwineObject _)   = "((TwineObject))"
+    show (TwineList  _) = "((TwineList))"
+    show (TwineBool x)  = show x
+    show (TwineNull)    = ""
+    show (TwineFunction _) = "((TwineFunction))"
 
 data EmptyContext = EmptyContext
 

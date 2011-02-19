@@ -25,10 +25,10 @@ class (Monad m) => ContextBinding m a | a -> m where
     makeString   :: a -> m String
     bind         :: (ContextBinding m a) => a -> TwineElement m
 
-    binding _ _ = return ContextNull
+    binding _ _ = return TwineNull
     makeIterable _ = return []
     makeString   _ = return ""
-    bind a = ContextMap $ Context {
+    bind a = TwineObject $ Context {
       getContext  = (flip binding a),
       getIterable = makeIterable a,
       getString   = makeString a
@@ -40,28 +40,28 @@ instance (Monad m) => ContextBinding m (TwineElement m) where
   makeString = return . show
 
 instance (Monad m) => ContextBinding m ([TwineElement m] -> m (TwineElement m)) where
-  bind = ContextFunction
+  bind = TwineFunction
 
 instance (Monad m) => ContextBinding m EmptyContext 
 
 instance (Monad m, ContextBinding m a) => ContextBinding m (Maybe a) where
   bind (Just a)  = bind a
-  bind Nothing   = ContextNull
+  bind Nothing   = TwineNull
 
 instance (Monad m) => ContextBinding m [(ByteString,TwineElement m)] where
-  binding k = return . fromMaybe ContextNull . lookup k
+  binding k = return . fromMaybe TwineNull . lookup k
 
 instance (Monad m) => ContextBinding m String where
-  bind = ContextValue . C.pack
+  bind = TwineString . C.pack
 
 instance (Monad m) => ContextBinding m ByteString where
-  bind a = ContextValue a
+  bind a = TwineString a
 
 instance (Monad m) => ContextBinding m Bool where
-  bind = ContextBool
+  bind = TwineBool
 
 instance (Monad m) => ContextBinding m (M.Map ByteString (TwineElement m)) where
-  binding k = return . fromMaybe (ContextNull) . M.lookup k
+  binding k = return . fromMaybe (TwineNull) . M.lookup k
 
 emptyContext :: (Monad m) => TwineElement m
 emptyContext = bind EmptyContext
