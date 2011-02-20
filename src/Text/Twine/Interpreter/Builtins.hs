@@ -9,7 +9,7 @@ import Control.Exception (assert)
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as M
 
-myNot [TwineBool b] = return . bind $ not b
+myNot [b] = unbind b >>= return . bind . not
 
 builtins :: (Monad m) => M.Map C.ByteString (TwineElement m)
-builtins = M.fromList [("not", TwineFunction myNot)]
+builtins = M.fromList [("not", method myNot)]

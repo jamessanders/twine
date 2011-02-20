@@ -3,6 +3,7 @@ module Text.Twine (
   ,module Text.Twine.Interpreter
   ,module Text.Twine.Interpreter.Interface
   ,module Text.Twine.Interpreter.ContextWriter
+  , TwineElement
   ,evalTemplate)
 where
 
