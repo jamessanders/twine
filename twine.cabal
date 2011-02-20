@@ -20,6 +20,7 @@ Library
                         , filepath >= 1.1.0.3
                         , parsec >= 3
                         , containers >= 0.3                                           
+                        , convertible
 
      Exposed-modules:   Text.Twine
 
@@ -28,7 +29,6 @@ Library
                         ,Text.Twine.Interpreter
                         ,Text.Twine.Interpreter.Interface
                         ,Text.Twine.Interpreter.ContextWriter         
-                        ,Text.Twine.Interpreter.InternalInterfaces
                         ,Text.Twine.Interpreter.Types
                         ,Text.Twine.Interpreter.Builtins
 

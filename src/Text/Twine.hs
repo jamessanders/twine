@@ -2,7 +2,6 @@ module Text.Twine (
   module Text.Twine.Parser
   ,module Text.Twine.Interpreter
   ,module Text.Twine.Interpreter.Interface
-  ,module Text.Twine.Interpreter.InternalInterfaces
   ,module Text.Twine.Interpreter.ContextWriter
   ,evalTemplate)
 where
@@ -10,7 +9,6 @@ where
 import Text.Twine.Interpreter
 import Text.Twine.Interpreter.Interface
 import Text.Twine.Interpreter.ContextWriter
-import Text.Twine.Interpreter.InternalInterfaces
 import Text.Twine.Interpreter.Types
 import Text.Twine.Parser
 

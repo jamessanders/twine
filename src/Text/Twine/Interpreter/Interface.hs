@@ -7,31 +7,141 @@
   , OverloadedStrings
   , UndecidableInstances
   , FunctionalDependencies
+
  #-}
 
-module Text.Twine.Interpreter.Interface (TemplateInterface (..)) where
+module Text.Twine.Interpreter.Interface (TemplateInterface (..), emptyContext, bind, unbind, method) where
 
+import Control.Monad.Writer
 import Data.ByteString.Char8 (ByteString)
+import Data.Convertible.Base
 import Data.Maybe
 import Data.Monoid
 import Text.Twine.Interpreter.Types
 import qualified Data.ByteString.Char8 as C
-import Control.Monad.Writer
 import qualified Data.Map as M
 
 class (Monad m) => TemplateInterface m a | a -> m where
     property      :: ByteString -> a -> m (TwineElement m)
     makeIterable :: a -> m [TwineElement m]
     makeString   :: a -> m String
-    bind         :: (TemplateInterface m a) => a -> TwineElement m
 
     property _ _ = return TwineNull
     makeIterable _ = return []
     makeString   _ = return ""
-    bind a = TwineObject $ Context {
-      getContext  = (flip property a),
-      getIterable = makeIterable a,
-      getString   = makeString a
-      }
+
+bind :: (Convertible a (TwineElement m), Monad m) => a -> TwineElement m
+bind = convert
+
+unbind :: (Convertible (TwineElement m) a, Monad m) => TwineElement m -> a
+unbind = convert
+
+method :: (Monad m) => ([TwineElement m] -> m (TwineElement m)) -> TwineElement m
+method = TwineFunction
+
+------------------------------------------------------------------------
+instance (Monad m) => TemplateInterface m (TwineElement m) where  
+  makeString = return . show
+
+instance (Monad m) => TemplateInterface m EmptyContext 
+
+instance (Monad m) => Convertible String (TwineElement m) where
+  safeConvert = Right . TwineString . C.pack
+
+instance (Monad m) => Convertible ByteString (TwineElement m) where
+  safeConvert = Right . TwineString 
+
+instance (Monad m) => Convertible Bool (TwineElement m) where
+  safeConvert = Right . TwineBool
+
+instance (Monad m, Convertible a (TwineElement m)) => Convertible [a] (TwineElement m) where
+  safeConvert = Right . bind . CXListLike . map bind 
+
+instance (Monad m) => Convertible Int (TwineElement m) where
+  safeConvert = Right . bind . CXInteger . fromIntegral
+  
+instance (Monad m) => Convertible Integer (TwineElement m) where
+  safeConvert = Right . bind . CXInteger
+
+instance (Monad m) => Convertible (TwineElement m) (TwineElement m) where
+  safeConvert = Right 
+
+instance (Monad m) => Convertible ([TwineElement m] -> m (TwineElement m)) (TwineElement m) where
+  safeConvert = Right . TwineFunction
+
+instance (Monad m, Convertible a (TwineElement m)) => Convertible (Maybe a) (TwineElement m) where
+  safeConvert (Just a) = Right $ bind a
+  safeConvert Nothing  = Right $ TwineNull
+
+instance (Monad m) => TemplateInterface m [(ByteString,TwineElement m)] where
+  property k = return . fromMaybe TwineNull . lookup k
+
+instance (Monad m) => TemplateInterface m (M.Map ByteString (TwineElement m)) where
+  property k = return . fromMaybe (TwineNull) . M.lookup k
+
+instance (Monad m, TemplateInterface m a) => Convertible a (TwineElement m) where
+  safeConvert a = Right $ TwineObject $ Context {
+    getContext  = (flip property a),
+    getIterable = makeIterable a,
+    getString   = makeString a
+    }
+
+------------------------------------------------------------------------
+  
+instance (Monad m) => TemplateInterface m (CXListLike m) where
+  property "length" = return . bind . length . unCXListLike
+  property "head"   = mbind . head . unCXListLike
+  property "tail"   = return . bind . tail . unCXListLike
+  property "init"   = return . bind . init . unCXListLike
+  property "last"   = mbind . last . unCXListLike
+  property "item"   = \x -> return $ method (\[n] -> do
+                                              i <- cxToInteger n
+                                              mbind (unCXListLike x !! fromIntegral i))
+                           
+  property "take"   = \x -> return $ method (\[n] -> do
+                                              i <- cxToInteger n
+                                              mbind . take (fromIntegral i) $ unCXListLike x)
+  
+  property "drop"   = \x -> return $ method (\[n] -> do
+                                              i <- cxToInteger n
+                                              mbind . drop (fromIntegral i) $ unCXListLike x)
+  
+  makeIterable = return . unCXListLike
+  makeString   = \_-> return "<list>"
 
 
+instance (Monad m) => TemplateInterface m CXInteger where
+  makeString = return . show . unCXInteger
+  property "toInteger" = return . TwineInteger . unCXInteger  
+  property "even?" = mbind . even . unCXInteger
+  property "odd?"  = mbind . odd  . unCXInteger
+  property "add"   = \a-> return $ TwineFunction (\[n]-> do 
+                                                      i <- unbind n
+                                                      mbind $ (unCXInteger a + i)
+                                                  )
+  property "subtract" = \a-> return $ TwineFunction (\[n]-> do 
+                                                      i <- unbind n
+                                                      mbind $ (unCXInteger a - i)
+                                                     )
+mbind :: (Convertible a (TwineElement m), Monad m) => a -> m (TwineElement m)
+mbind = return . bind
+  
+emptyContext :: (Monad m) => TwineElement m
+emptyContext = bind EmptyContext
+
+instance (Monad m) => Convertible (TwineElement m) (m Int) where
+  safeConvert = Right . cxToInteger
+  
+instance (Monad m) => Convertible (TwineElement m) (m Integer) where
+  safeConvert = Right . cxToInteger
+
+cxToInteger (TwineInteger i) = return (fromIntegral i)
+cxToInteger cm@(TwineObject obj) = do
+  v <- signal "toInteger" cm
+  case v of
+    TwineInteger i -> return (fromIntegral i)
+    TwineNull -> error "expected number but got null value"
+    _ -> error ("'" ++ show v ++ "' is not a number")
+
+signal :: ByteString -> TwineElement t -> t (TwineElement t)
+signal sig (TwineObject obj) = (getContext obj) sig 

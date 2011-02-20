@@ -8,7 +8,6 @@ import Data.ByteString.Char8 (ByteString,pack,unpack)
 import Debug.Trace
 import Text.Twine.Interpreter.Builtins
 import Text.Twine.Interpreter.Interface
-import Text.Twine.Interpreter.InternalInterfaces
 import Text.Twine.Interpreter.Types
 import Text.Twine.Parser.Types
 import qualified Data.ByteString.Char8 as C
@@ -69,7 +68,7 @@ eval (Slot x) = debug ("evaluating slot: " ++ show x) $ do
 eval (Assign k e) = debug ("evaluating assign " ++ show k ++ " = " ++ show e) $ do 
   ee <- evalExpr e
   st <- getCX
-  putCX (bind [(k,ee)] <+> st)
+  putCX (bind (M.fromList [(k,ee)]) <+> st)
   return (C.pack "")
 
 eval (Cond e bls) = do
@@ -86,19 +85,23 @@ eval (Loop e as bls) = do
   case ee of 
     TwineNull -> return (C.pack "")
     a -> runLoop a
-  where runLoop (TwineList ls) = fmap (C.concat) $ mapM inner ls
-        
-        runLoop (TwineObjectList x) = do
-          it <- lift2 $ getIterable (head x)
-          runLoop (TwineList it)
-        
-        runLoop (TwineObject x) = do
-          it <- lift2 $ getIterable x
-          runLoop (TwineList it)
-
-        runLoop x = error $ "Not iterable: " ++ show x
-        inner v = do cx <- getCX
-                     lift2 $ runEval bls (bind [(as,v)] <+> cx)
+  where  
+    --runLoop :: (Monad m) => TwineElement m -> m C.ByteString
+    runLoop (TwineList ls) = fmap (C.concat) $ mapM inner ls  
+                                                              
+    runLoop (TwineObjectList x) = do                          
+      it <- lift2 $ getIterable (head x)                      
+      runLoop (TwineList it)                                  
+                                                              
+    runLoop (TwineObject x) = do                              
+      it <- lift2 $ getIterable x                             
+      runLoop (TwineList it)                                  
+                                                              
+    runLoop x = error $ "Not iterable: " ++ show x            
+    
+    inner v = do 
+      cx <- getCX                                  
+      lift2 $ runEval bls (bind (M.fromList [(as,v)]) <+> cx)   
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 
