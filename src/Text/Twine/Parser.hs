@@ -86,6 +86,8 @@ include = do
 -- Expressions
 ------------------------------------------------------------------------
 
+-- TODO Remove the cruft from the original expression parser.
+
 accessor = do
   a <- try method <|> try atom <?> "property or method"
   char '.'
@@ -165,9 +167,3 @@ loadTemplateFromFile fp = parseFile fp >>= doInclude (takeDirectory fp)
 
 loadTemplateFromString :: String -> Template
 loadTemplateFromString = parseTemplate "theTemplate"
-
-
-
-
-
-

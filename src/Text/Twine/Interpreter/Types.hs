@@ -12,10 +12,7 @@
 module Text.Twine.Interpreter.Types where
 
 import qualified Data.ByteString.Char8 as C
-import Data.ByteString.Char8 (ByteString,pack)
-import Control.Monad.Writer
-import Control.Monad.Identity 
-import Control.Monad.Trans
+import Data.ByteString.Char8 (ByteString)
 import qualified Data.Map as M
 
 data TwineElement m = TwineObjectList [Context m]
@@ -49,7 +46,7 @@ instance (Monad m) => Show (TwineElement m) where
     show (TwineBool x)  = show x
     show (TwineNull)    = ""
     show (TwineFunction _) = "((TwineFunction))"
-
+    show _ = ""
 data EmptyContext = EmptyContext
 
 data Context m = Context { 

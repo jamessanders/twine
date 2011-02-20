@@ -1,5 +1,5 @@
 name:                twine
-version:             0.1.1
+version:             0.1.2
 synopsis:            very simple template language
 description:         very simple template language
 category:            Text
@@ -26,10 +26,10 @@ Library
      Other-modules:     Text.Twine.Parser
                         ,Text.Twine.Parser.Types
                         ,Text.Twine.Interpreter
-                        ,Text.Twine.Interpreter.Context
+                        ,Text.Twine.Interpreter.Interface
                         ,Text.Twine.Interpreter.ContextWriter         
-                        ,Text.Twine.Interpreter.FancyContext
+                        ,Text.Twine.Interpreter.InternalInterfaces
                         ,Text.Twine.Interpreter.Types
                         ,Text.Twine.Interpreter.Builtins
 
-     ghc-options:       -O2 -fvia-C
+     ghc-options:       -O2 -fvia-C 

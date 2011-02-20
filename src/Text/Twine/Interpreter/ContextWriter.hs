@@ -13,8 +13,8 @@ import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
 import Data.Monoid
 import Text.Twine.Interpreter.Types
-import Text.Twine.Interpreter.Context
-import Text.Twine.Interpreter.FancyContext
+import Text.Twine.Interpreter.Interface
+import Text.Twine.Interpreter.InternalInterfaces
 import Text.Twine.Interpreter.Builtins
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as C

@@ -1,38 +1,34 @@
 {-# LANGUAGE  NoMonomorphismRestriction #-}
 module Text.Twine.Interpreter (runEval) where
 
---import Text.Twine
-
+import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Writer
-import Control.Monad.Identity
-
-import Text.Twine.Interpreter.Types
-import Text.Twine.Interpreter.Context
-import Text.Twine.Interpreter.FancyContext
-import Text.Twine.Interpreter.Builtins
-import Text.Twine.Parser.Types
 import Data.ByteString.Char8 (ByteString,pack,unpack)
-import qualified Data.ByteString.Char8 as C
 import Debug.Trace
+import Text.Twine.Interpreter.Builtins
+import Text.Twine.Interpreter.Interface
+import Text.Twine.Interpreter.InternalInterfaces
+import Text.Twine.Interpreter.Types
+import Text.Twine.Parser.Types
+import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as M
+
+-- TODO: Most of the interpreter is all wrong, and there is no error
+--       checking.  Eventually this all needs to be fixed up.
 
 type Stack m a = StateT (ContextState m) (WriterT [String] m) a
 
--- simpleContext
-
 foldCX :: (Monad m) => [TwineElement m] -> TwineElement m
 foldCX = foldl (<+>) emptyContext
-
--- Context Writer Monad --
 
 mergeCXP (TwineObjectList a) (TwineObjectList b) = TwineObjectList (a ++ b)
 mergeCXP (TwineList a)  (TwineList b)  = TwineList (a ++ b)
 mergeCXP (TwineObject a)   x   = TwineObjectList [a] `mergeCXP` x
 mergeCXP x (TwineObject a)   = x `mergeCXP` TwineObjectList [a]
 mergeCXP a b = error $ "Cannot merge " ++ show a ++ " and " ++ show b
-(<+>) = mergeCXP
 
+(<+>) = mergeCXP
 
 runStack run state = runWriterT (runStateT run state)
 
