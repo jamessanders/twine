@@ -137,13 +137,13 @@ accessObjectInContext :: (Monad m, Functor m) => TwineElement m -> Expr -> Stack
 accessObjectInContext context (Accessor (Var n) expr) = do
   cx <- lift2 $ doLookup' n context
   case cx of
-    Nothing -> error "ERROR"
+    Nothing -> error $ "Could not find " ++ (show n) ++ " in context " ++ show context 
     Just cx' -> accessObjectInContext cx' expr
 
 accessObjectInContext context (Accessor (Func n a) expr) = do
   cx <- lift2 $ doLookup' n context
   case cx of 
-    Nothing -> error "ERROR"
+    Nothing -> error $ "Could not find " ++ (show n) ++ " in context " ++ show context 
     Just cx' ->
       case cx' of
         TwineFunction f -> do
@@ -155,20 +155,21 @@ accessObjectInContext context (Accessor (Func n a) expr) = do
 accessObjectInContext context (Var n) = do
   cx <- lift2 $ doLookup' n context
   case cx of
+    Nothing -> error $ "Could not find " ++ (show n) ++ " in context " ++ show context 
     Just x -> return x
-    Nothing -> error "ERROR"
+
   
 
 accessObjectInContext context (Func n args) = do
   cx <- lift2 $ doLookup' n context
   case cx of 
-    Nothing -> error "Error"
+    Nothing -> error $ "Could not find " ++ (show n) ++ " in context " ++ show context 
     Just cx' -> do
       case cx' of
         TwineFunction f -> do 
           args' <- mapM evalExpr args
           lift2 $ f args'
-        _ -> error "Not a callable method"
+        _ -> error $ "Not a callable method: " ++ show cx'
 
 
 

@@ -127,6 +127,11 @@ instance (Monad m) => TemplateInterface m CXInteger where
                                                  i <- unbind n
                                                  mbind $ (unCXInteger a - i)
                                              )
+
+  property "gt?" = \a-> return $ method (\[n]-> do
+                                            i <- unbind n
+                                            mbind $ (unCXInteger a > i))
+
 mbind :: (Convertible a (TwineElement m), Monad m) => a -> m (TwineElement m)
 mbind = return . bind
   
