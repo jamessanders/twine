@@ -98,6 +98,10 @@ instance (Monad m) => TemplateInterface m (CXListLike m) where
   property "tail"   = return . bind . tail . unCXListLike
   property "init"   = return . bind . init . unCXListLike
   property "last"   = mbind . last . unCXListLike
+  property "enum"   = \x -> return $ bind [0..(length $ unCXListLike x) - 1]
+  property "elem?"  = \x -> return $ method (\[y] -> do
+                        return $ bind (y `elem` unCXListLike x)
+                      )
   property "item"   = \x -> return $ method (\[n] -> do
                                               i <- unbind n
                                               mbind (unCXListLike x !! i))
@@ -109,7 +113,7 @@ instance (Monad m) => TemplateInterface m (CXListLike m) where
   property "drop"   = \x -> return $ method (\[n] -> do
                                               i <- unbind n
                                               mbind . drop i $ unCXListLike x)
-  
+  property x = \_ -> error $ C.unpack x ++ " is not a valid property of a list."
   makeIterable = return . unCXListLike
   makeString   = \_-> return "<list>"
 
@@ -162,3 +166,5 @@ cxToBool (TwineBool b) = return b
 
 cxToString (TwineString s) = return (C.unpack s)
 cxToString (TwineObject c) = getString c 
+cxToString (TwineInteger n) = return $ show n
+cxToString (TwineBool b) = return $ show b

@@ -12,6 +12,12 @@ import qualified Data.Map as M
 myNot [b] = unbind b >>= return . bind . not
 myList = return . bind
 
+myEq [a,b] = do
+  a' <- unbind a 
+  b' <- unbind b 
+  return $ bind ((a' :: String) == (b' :: String))
+
 builtins :: (Monad m) => M.Map C.ByteString (TwineElement m)
 builtins = M.fromList [("not", method myNot),
-                       ("list", method myList)]
+                       ("list", method myList),
+                       ("eq?" , method myEq)]

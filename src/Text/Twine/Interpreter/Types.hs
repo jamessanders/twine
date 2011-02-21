@@ -42,8 +42,11 @@ instance (Monad m) => Show (TwineElement m) where
     show _ = ""
 
 instance (Monad m) => Eq (TwineElement m) where
-    (TwineString x) == (TwineString y) = x == y
-    (TwineList  x) == (TwineList y)  = x == y
+    (TwineNull) == (TwineNull)           = True
+    (TwineBool x) == (TwineBool y)       = x == y
+    (TwineInteger x) == (TwineInteger y) = x == y
+    (TwineString x) == (TwineString y)   = x == y
+    (TwineList  x) == (TwineList y)      = x == y
     _ == _ = error "Unable to determine equality."
 
 
