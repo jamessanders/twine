@@ -32,7 +32,7 @@ class (Monad m) => TemplateInterface m a | a -> m where
 
 
 instance (Monad m, TemplateInterface m a) => Convertible a (TwineElement m) where
-  safeConvert a = Right $ TwineObject $ Context {
+  safeConvert a = Right $ TwineObject $ Object {
     getContext  = (flip property a),
     getIterable = makeIterable a,
     getString   = makeString a
