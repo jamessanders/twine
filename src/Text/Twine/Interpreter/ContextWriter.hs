@@ -7,7 +7,7 @@
   , OverloadedStrings
   , UndecidableInstances
  #-}
-module Text.Twine.Interpreter.ContextWriter (makeContext, (=:)) where
+module Text.Twine.Interpreter.ContextWriter (makeContext, (=:), merge) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
@@ -22,13 +22,14 @@ import Data.Map (Map)
 import Data.Convertible
 import qualified Data.Map as M
 
-type TwineObjectper m = Map ByteString (TwineElement m)
-type ContextWriter m = WriterT (TwineObjectper m)  m () 
+type ContextWriter m = WriterT (Context m)  m () 
 
-makeContext :: (Monad m) => ContextWriter m -> m (TwineElement m) 
+makeContext :: (Monad m) => ContextWriter m -> m (Context m) 
 makeContext cw = do
   mp <- execWriterT cw 
-  return $ bind (mp `M.union` builtins)
+  return $ Context (unContext mp `M.union` builtins)
 
 --(=:) :: (MonadWriter (Map ByteString (TwineElement m)) m, Convertible a (TwineElement m)) => String -> a -> m ()
-k =: v = tell $ M.fromList [(C.pack k, bind v)]
+k =: v = tell $ Context (M.fromList [(C.pack k, bind v)])
+
+merge a b = Context (unContext a `M.union` unContext b)

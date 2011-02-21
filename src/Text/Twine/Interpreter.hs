@@ -36,8 +36,10 @@ lift2 f = lift $ lift $ f
 debug _ fn = fn 
 --debug = trace
 
-runEval :: (Monad m, Functor m) => Template -> TwineElement m -> m ByteString
-runEval tm cx = do 
+runEval tm cx = runEval' tm (bind $ unContext cx)
+
+runEval' :: (Monad m, Functor m) => Template -> TwineElement m -> m ByteString
+runEval' tm cx = do 
   ((r,log),_) <- runStack (eval' tm) (ContextState cx M.empty)
   debug (show r) $ do
     return $ C.concat r
@@ -77,7 +79,7 @@ eval (Cond e bls) = do
   case ee of
     (TwineNull) -> return (C.pack "") 
     (TwineBool False) -> return (C.pack "")
-    _  ->  lift2 $ runEval bls st
+    _  ->  lift2 $ runEval' bls st
 
 
 eval (Loop e as bls) = do
@@ -101,7 +103,7 @@ eval (Loop e as bls) = do
     
     inner v = do 
       cx <- getCX                                  
-      lift2 $ runEval bls (bind (M.fromList [(as,v)]) <+> cx)   
+      lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx)   
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 

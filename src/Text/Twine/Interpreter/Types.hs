@@ -7,23 +7,29 @@
   , OverloadedStrings
   , UndecidableInstances
   , FunctionalDependencies
+  , GeneralizedNewtypeDeriving
  #-}
 
 module Text.Twine.Interpreter.Types where
 
 import qualified Data.ByteString.Char8 as C
 import Data.ByteString.Char8 (ByteString)
-import qualified Data.Map as M
+import Data.Map (Map)
 import Data.Convertible.Base
+import Data.Monoid
 
-data TwineElement m = TwineObjectList [Context m]
-                    | TwineObject (Context m)
+data TwineElement m = TwineObjectList [Object m]
+                    | TwineObject (Object m)
                     | TwineString ByteString
                     | TwineInteger Integer
                     | TwineBool Bool
                     | TwineNull
                     | TwineList [TwineElement m]
                     | TwineFunction ([TwineElement m] -> m (TwineElement m))
+
+newtype Context m = Context {
+      unContext :: Map ByteString (TwineElement m)
+} deriving (Monoid)
 
 instance (Monad m) => Show (TwineElement m) where
     show (TwineString x) = C.unpack x
@@ -46,15 +52,15 @@ newtype CXInteger    = CXInteger  { unCXInteger  :: Integer }
 
 type BuiltinFunc m = [TwineElement m] -> m (TwineElement m)
 
-data ContextState m = ContextState { getContextState :: (TwineElement m)
-                                   , getContextFuns  :: M.Map C.ByteString (BuiltinFunc m) }
+data ContextState m = ContextState { 
+      getContextState :: (TwineElement m)
+    , getContextFuns  :: Map C.ByteString (BuiltinFunc m) 
+}
 
-data Context m = Context { 
+data Object m = Object { 
   getContext    :: ByteString -> m (TwineElement m),
   getIterable   :: m [TwineElement m],
   getString     :: m String
 }
 
-
 data EmptyContext = EmptyContext
-
