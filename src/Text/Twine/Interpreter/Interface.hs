@@ -147,6 +147,9 @@ instance (Monad m) => Convertible (TwineElement m) (m Integer) where
 instance (Monad m) => Convertible (TwineElement m) (m Bool) where
   safeConvert = Right . cxToBool
   
+instance (Monad m) => Convertible (TwineElement m) (m String) where
+  safeConvert = Right . cxToString
+  
 cxToInteger (TwineInteger i) = 
   return (fromIntegral i)
 cxToInteger cm@(TwineObject obj) = 
@@ -156,3 +159,6 @@ signal :: ByteString -> TwineElement t -> t (TwineElement t)
 signal sig (TwineObject obj) = (getContext obj) sig 
 
 cxToBool (TwineBool b) = return b
+
+cxToString (TwineString s) = return (C.unpack s)
+cxToString (TwineObject c) = getString c 
