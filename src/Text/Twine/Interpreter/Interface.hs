@@ -40,7 +40,7 @@ instance (Monad m, TemplateInterface m a) => Convertible a (TwineElement m) wher
 
 ------------------------------------------------------------------------
 
-bind :: (Convertible a (TwineElement m), Monad m) => a -> TwineElement m
+bind :: (Monad m, Convertible a (TwineElement m)) => a -> TwineElement m
 bind = convert
 
 unbind :: (Convertible (TwineElement m) a, Monad m) => TwineElement m -> a
@@ -72,7 +72,7 @@ instance (Monad m) => TemplateInterface m (TwineElement m) where
 
 instance (Monad m) => TemplateInterface m EmptyContext 
 
-instance (Monad m, Convertible a (TwineElement m)) => Convertible [a] (TwineElement m) where
+instance (Monad m, Convertible a (TwineElement m), TemplateInterface m a) => Convertible [a] (TwineElement m) where
   safeConvert = Right . bind . CXListLike . map bind 
 
 instance (Monad m) => Convertible Int (TwineElement m) where
@@ -91,6 +91,7 @@ instance (Monad m) => TemplateInterface m (M.Map ByteString (TwineElement m)) wh
   property k = return . bind . M.lookup k
 
 ------------------------------------------------------------------------
+instance (Monad m) => TemplateInterface m Int
   
 instance (Monad m) => TemplateInterface m (CXListLike m) where
   property "length" = return . bind . length . unCXListLike
@@ -98,7 +99,7 @@ instance (Monad m) => TemplateInterface m (CXListLike m) where
   property "tail"   = return . bind . tail . unCXListLike
   property "init"   = return . bind . init . unCXListLike
   property "last"   = mbind . last . unCXListLike
-  property "enum"   = \x -> return $ bind [0..(length $ unCXListLike x) - 1]
+  property "enum"   = \x -> return $ convert [0..(length $ unCXListLike x) - 1]
   property "elem?"  = \x -> return $ method (\[y] -> do
                         return $ bind (y `elem` unCXListLike x)
                       )
