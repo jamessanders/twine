@@ -194,7 +194,8 @@ doLookup' st (TwineObjectList (x:xs)) = do
 
 doLookup' st (TwineBool True) = return (Just $ TwineString $ pack "True")
 doLookup' st (TwineBool False) = return Nothing
-doLookup' st (TwineObject m) = doLookup' st (TwineObjectList [m])
+doLookup' st (TwineObject m) = (getContext m) st >>= return . Just
+      
 doLookup' st x = error $ "Context not searchable when looking up '" ++ unpack st ++ "' in " ++ show x
 
 ------------------------------------------------------------------------

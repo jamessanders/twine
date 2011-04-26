@@ -18,14 +18,15 @@ import Data.Map (Map)
 import Data.Convertible.Base
 import Data.Monoid
 
-data TwineElement m = TwineObjectList [Object m]
-                    | TwineObject (Object m)
-                    | TwineString ByteString
-                    | TwineInteger Integer
-                    | TwineBool Bool
-                    | TwineNull
-                    | TwineList [TwineElement m]
-                    | TwineFunction ([TwineElement m] -> m (TwineElement m))
+data TwineElement m = 
+          TwineObjectList [Object m]
+        | TwineObject (Object m)
+        | TwineString ByteString
+        | TwineInteger Integer
+        | TwineBool Bool
+        | TwineNull
+        | TwineList [TwineElement m]
+        | TwineFunction ([TwineElement m] -> m (TwineElement m))
 
 newtype Context m = Context {
       unContext :: Map ByteString (TwineElement m)

@@ -30,13 +30,13 @@ class (Monad m) => TemplateInterface m a | a -> m where
     makeIterable _ = return []
     makeString   _ = return ""
 
-
 instance (Monad m, TemplateInterface m a) => Convertible a (TwineElement m) where
   safeConvert a = Right $ TwineObject $ Object {
     getContext  = (flip property a),
     getIterable = makeIterable a,
     getString   = makeString a
     }
+
 
 ------------------------------------------------------------------------
 
@@ -72,7 +72,7 @@ instance (Monad m) => TemplateInterface m (TwineElement m) where
 
 instance (Monad m) => TemplateInterface m EmptyContext 
 
-instance (Monad m, Convertible a (TwineElement m), TemplateInterface m a) => Convertible [a] (TwineElement m) where
+instance (Monad m, Convertible a (TwineElement m)) => Convertible [a] (TwineElement m) where
   safeConvert = Right . bind . CXListLike . map bind 
 
 instance (Monad m) => Convertible Int (TwineElement m) where
