@@ -72,7 +72,7 @@ instance (Monad m) => TemplateInterface m (TwineElement m) where
 
 instance (Monad m) => TemplateInterface m EmptyContext 
 
-instance (Monad m, Convertible a (TwineElement m)) => Convertible [a] (TwineElement m) where
+instance (Monad m, TemplateInterface m a, Convertible a (TwineElement m)) => Convertible [a] (TwineElement m) where
   safeConvert = Right . bind . CXListLike . map bind 
 
 instance (Monad m) => Convertible Int (TwineElement m) where
