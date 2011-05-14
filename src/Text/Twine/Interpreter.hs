@@ -1,5 +1,5 @@
-{-# LANGUAGE  NoMonomorphismRestriction #-}
-module Text.Twine.Interpreter (runEval) where
+{-# LANGUAGE  NoMonomorphismRestriction, OverloadedStrings, FlexibleContexts #-}
+module Text.Twine.Interpreter (runEval,getMacros) where
 
 import Control.Monad.Identity
 import Control.Monad.State
@@ -9,6 +9,7 @@ import Debug.Trace
 import Text.Twine.Interpreter.Builtins
 import Text.Twine.Interpreter.Interface
 import Text.Twine.Interpreter.Types
+import Text.Twine.Interpreter.ContextWriter
 import Text.Twine.Parser.Types
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as M
@@ -17,6 +18,18 @@ import qualified Data.Map as M
 --       checking.  Eventually this all needs to be fixed up.
 
 type Stack m a = StateT (ContextState m) (WriterT [String] m) a
+
+
+getMacros = Macros . M.fromList . getMacros'
+  where
+    getMacros' ((Macro name params blocks):xs)  = (name, evalMacro params blocks) : getMacros' xs
+    getMacros' (_:xs) = getMacros' xs
+    getMacros' [] = []
+
+evalMacro params blocks args preContext macros = do
+  let localContext = M.fromList (zip params args)
+  let context = (bind $ localContext) <+> preContext
+  runEval' blocks context macros
 
 foldCX :: (Monad m) => [TwineElement m] -> TwineElement m
 foldCX = foldl (<+>) emptyContext
@@ -36,11 +49,12 @@ lift2 f = lift $ lift $ f
 debug _ fn = fn 
 --debug = trace
 
-runEval tm cx = runEval' tm (bind $ unContext cx)
+runEval :: (Monad m, Functor m) => Template -> Context m -> m ByteString
+runEval tm cx = runEval' tm (bind $ unContext cx) (getMacros tm)
 
-runEval' :: (Monad m, Functor m) => Template -> TwineElement m -> m ByteString
-runEval' tm cx = do 
-  ((r,log),_) <- runStack (eval' tm) (ContextState cx M.empty)
+runEval' :: (Monad m, Functor m) => Template -> TwineElement m -> Macros m -> m ByteString
+runEval' tm cx macros = do 
+  ((r,log),_) <- runStack (eval' tm) (ContextState cx macros)
   debug (show r) $ do
     return $ C.concat r
 
@@ -58,6 +72,8 @@ eval' = mapM eval
 eval :: (Monad m, Functor m) => TemplateCode -> Stack m ByteString
 eval (Text x) = return x 
 
+eval (Macro _ _ _) = return (C.empty)
+
 eval (Slot x) = debug ("evaluating slot: " ++ show x) $ do
   ee  <- evalExpr x
   st  <- case ee of
@@ -74,12 +90,13 @@ eval (Assign k e) = debug ("evaluating assign " ++ show k ++ " = " ++ show e) $ 
   return (C.pack "")
 
 eval (Cond e bls) = do
+  g <- get
   ee <- evalExpr e
   st <- getCX
   case ee of
     (TwineNull) -> return (C.pack "") 
     (TwineBool False) -> return (C.pack "")
-    _  ->  lift2 $ runEval' bls st
+    _  -> lift2 $ runEval' bls st (getContextMacros g)
 
 
 eval (Loop e as bls) = do
@@ -102,8 +119,9 @@ eval (Loop e as bls) = do
     runLoop x = error $ "Not iterable: " ++ show x            
     
     inner v = do 
+      g  <- get
       cx <- getCX                                  
-      lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx)   
+      lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx) (getContextMacros g)
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 
@@ -131,9 +149,22 @@ evalExpr (Var n) = do g <- getCX
 evalExpr (NumberLiteral n) = return . bind $ n
 evalExpr (StringLiteral n) = return . bind $ n
 
+evalExpr (Accessor (Var "macros") expr) = runMacro expr
+
 evalExpr acc@(Accessor n expr) = do
   g <- getCX
   accessObjectInContext g acc
+  
+runMacro :: (Monad m, Functor m) => Expr -> Stack m (TwineElement m)
+runMacro (Func name args) = do
+  g <- get
+  let macros = getContextMacros g
+  case M.lookup name (unMacros macros) of
+    Nothing    -> error "Unknown macro"
+    Just macro -> do
+      args' <- mapM evalExpr args
+      x <- lift2 $ macro args' (getContextState g) macros
+      return (TwineString x)
   
 accessObjectInContext :: (Monad m, Functor m) => TwineElement m -> Expr -> Stack m (TwineElement m)
 accessObjectInContext context (Accessor (Var n) expr) = do

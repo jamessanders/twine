@@ -7,7 +7,7 @@
   , OverloadedStrings
   , UndecidableInstances
  #-}
-module Text.Twine.Interpreter.ContextWriter (makeContext, (=:), merge) where
+module Text.Twine.Interpreter.ContextWriter (mapToContext, makeContext, (=:), merge) where
 
 import Data.ByteString.Char8 (ByteString)
 import Data.Maybe
@@ -33,3 +33,5 @@ makeContext cw = do
 k =: v = tell $ Context (M.fromList [(C.pack k, bind v)])
 
 merge a b = Context (unContext a `M.union` unContext b)
+
+mapToContext = Context

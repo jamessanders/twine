@@ -21,6 +21,6 @@ data TemplateCode =
   | Cond Expr     [TemplateCode]
   | Incl FilePath
   | Assign Key Expr
+  | Macro Name [Name] [TemplateCode]
   deriving (Show)
-
 

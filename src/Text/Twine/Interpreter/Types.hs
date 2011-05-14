@@ -55,9 +55,13 @@ newtype CXInteger    = CXInteger  { unCXInteger  :: Integer }
 
 type BuiltinFunc m = [TwineElement m] -> m (TwineElement m)
 
+data Macros m = Macros { 
+  unMacros :: Map ByteString ([TwineElement m] -> TwineElement m -> Macros m -> m ByteString) 
+}
+
 data ContextState m = ContextState { 
-      getContextState :: (TwineElement m)
-    , getContextFuns  :: Map C.ByteString (BuiltinFunc m) 
+      getContextState  :: TwineElement m
+     ,getContextMacros :: Macros m
 }
 
 data Object m = Object { 

@@ -1,5 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module Text.Twine.Parser (loadTemplateFromFile, loadTemplateFromString) where
+module Text.Twine.Parser (loadTemplateFromFile, loadTemplateFromString, Template) where
 
 import Data.ByteString.Char8 (ByteString, pack)
 import Debug.Trace
@@ -16,13 +16,14 @@ token t = do
 
 template =  templateEntities <|> textBlock
 
-templateEntities = try slot <|> try conditional <|> try loop <|> try assign <|> include <?> "Template entity"
+templateEntities = try slot <|> try conditional <|> try macro <|> try loop <|> try assign <|> include <?> "Template entity"
 
 startOfEntities = try (string "{{") 
                   <|> try (string "{@")
                   <|> try (string "{|")
                   <|> try (string "{+")
                   <|> try (string "{?")
+                  <|> try (string "{=")
                   <?> "start of entity"
 
 endOfEntities = try (string "}}") 
@@ -30,11 +31,24 @@ endOfEntities = try (string "}}")
                 <|> try (string "|}")
                 <|> try (string "+}")
                 <|> try (string "?}")
+                <|> try (string "=}")
                 <?> "end of entity"
 
 textBlock = do 
   text <- manyTill anyChar ((lookAhead startOfEntities >> return ()) <|> (lookAhead endOfEntities >> return ()) <|> eof)
   return (Text $ pack text)
+
+macro = do
+  token "{=" <?> "Start of macro"
+  token "|" <?> "Start of macro signature"
+  ident <- name
+  spaces
+  token "("
+  names <- sepBy name (token ",")
+  token ")"
+  token "|" <?> "end of macro signature"
+  blocks <- manyTill template (string "=}")
+  return (Macro ident names blocks)
 
 slot = do
   token "{{" <?> "Start of slot"
