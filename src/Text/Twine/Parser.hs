@@ -14,7 +14,8 @@ token t = do
   spaces
   return t
 
-template =  templateEntities <|> textBlock
+template  =  try altMacro <|> templateEntities <|> textBlock
+template'  =  templateEntities <|> textBlock
 
 templateEntities = try slot <|> try conditional <|> try macro <|> try loop <|> try assign <|> include <?> "Template entity"
 
@@ -23,6 +24,7 @@ startOfEntities = try (string "{{")
                   <|> try (string "{|")
                   <|> try (string "{+")
                   <|> try (string "{?")
+                  <|> try (string "@")
                   <|> try (string "{=")
                   <?> "start of entity"
 
@@ -32,6 +34,8 @@ endOfEntities = try (string "}}")
                 <|> try (string "+}")
                 <|> try (string "?}")
                 <|> try (string "=}")
+                <|> try (string "\n@")
+                <|> try (string "\n-end")
                 <?> "end of entity"
 
 textBlock = do 
@@ -48,6 +52,19 @@ macro = do
   token ")"
   token "|" <?> "end of macro signature"
   blocks <- manyTill template (string "=}")
+  return (Macro ident names blocks)
+  
+altMacro = do
+  optional (try $ char '\n')
+  char '@'
+  ident <- name
+  spaces
+  token "("
+  names <- sepBy name (token ",")
+  token ")"
+  spaces
+  token "=>"
+  blocks <- manyTill template' (try (string "\n-end") <|> lookAhead (try (string "\n@")) <|> (eof >> return ""))
   return (Macro ident names blocks)
 
 slot = do
@@ -102,6 +119,11 @@ include = do
 
 -- TODO Remove the cruft from the original expression parser.
 
+macroAccessor = do
+  char '@'
+  b <- expression
+  return $ Accessor (Var $ pack "macros") b
+
 accessor = do
   a <- try method <|> try atom <?> "property or method"
   char '.'
@@ -152,7 +174,7 @@ atom = do
   n <- name
   return (Var n)
 
-expression = try sexpr <|> try accessor <|> try method <|> try openExpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
+expression = try sexpr <|> try macroAccessor <|> try accessor <|> try method <|> try openExpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
 expression' = try sexpr <|> try atom <|> try stringLiteral <|> numberLiteral  <?> "expression"
 ------------------------------------------------------------------------
 

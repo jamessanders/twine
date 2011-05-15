@@ -157,15 +157,21 @@ evalExpr acc@(Accessor n expr) = do
   
 runMacro :: (Monad m, Functor m) => Expr -> Stack m (TwineElement m)
 runMacro (Func name args) = do
+  runMacro' name args
+runMacro (Var name) = do
+  runMacro' name []
+runMacro' name args = do
   g <- get
   let macros = getContextMacros g
   case M.lookup name (unMacros macros) of
-    Nothing    -> error "Unknown macro"
+    Nothing    -> error ("Unknown macro: " ++ C.unpack name)
     Just macro -> do
       args' <- mapM evalExpr args
       x <- lift2 $ macro args' (getContextState g) macros
       return (TwineString x)
   
+
+
 accessObjectInContext :: (Monad m, Functor m) => TwineElement m -> Expr -> Stack m (TwineElement m)
 accessObjectInContext context (Accessor (Var n) expr) = do
   cx <- lift2 $ doLookup' n context
