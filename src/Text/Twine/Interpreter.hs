@@ -103,7 +103,7 @@ eval (Cond e bls) = do
 eval (Loop e as bls) = do
   ee <- evalExpr e
   s <- lift2 $ makeString ee
-  trace (show s) $ case ee of 
+  case ee of 
     TwineNull -> return (C.pack "")
     a -> runLoop a
   where  
