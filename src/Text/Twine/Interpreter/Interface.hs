@@ -164,6 +164,10 @@ signal :: ByteString -> TwineElement t -> t (TwineElement t)
 signal sig (TwineObject obj) = (getContext obj) sig 
 
 cxToBool (TwineBool b) = return b
+cxToBool (TwineString "") = return False
+cxToBool (TwineNull) = return False
+cxToBool (TwineList []) = return False
+cxToBool _ = return True
 
 cxToString (TwineString s) = return (C.unpack s)
 cxToString (TwineObject c) = getString c 

@@ -1,4 +1,4 @@
-{-# LANGUAGE  NoMonomorphismRestriction #-}
+{-# LANGUAGE  NoMonomorphismRestriction, OverloadedStrings #-}
 module Text.Twine.Interpreter (runEval) where
 
 import Control.Monad.Identity
@@ -77,6 +77,7 @@ eval (Cond e bls) = do
   ee <- evalExpr e
   st <- getCX
   case ee of
+    (TwineString "") -> return C.empty
     (TwineNull) -> return (C.pack "") 
     (TwineBool False) -> return (C.pack "")
     _  ->  lift2 $ runEval' bls st
