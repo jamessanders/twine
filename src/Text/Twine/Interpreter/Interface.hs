@@ -88,7 +88,10 @@ instance (Monad m) => TemplateInterface m [(ByteString,TwineElement m)] where
   property k = return . bind . lookup k
 
 instance (Monad m) => TemplateInterface m (M.Map ByteString (TwineElement m)) where
-  property k = return . bind . M.lookup k
+  property k m = 
+    case M.lookup k m of
+      Just x -> return x
+      Nothing -> return TwineNull
 
 instance (Monad m) => TemplateInterface m ByteString where
   makeString = return . C.unpack

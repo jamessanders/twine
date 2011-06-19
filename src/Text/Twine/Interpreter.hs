@@ -7,10 +7,12 @@ import Control.Monad.Writer
 import Control.Applicative
 import Data.ByteString.Char8 (ByteString,pack,unpack)
 import Debug.Trace
+
 import Text.Twine.Interpreter.Builtins
 import Text.Twine.Interpreter.Interface
 import Text.Twine.Interpreter.Types
 import Text.Twine.Interpreter.ContextWriter
+import Text.Twine.Parser (loadTemplateFromString)
 import Text.Twine.Parser.Types
 import qualified Data.ByteString.Char8 as C
 import qualified Data.Map as M
@@ -137,7 +139,7 @@ evalExpr :: (Monad m, Functor m) => Expr -> Stack m (TwineElement m)
 evalExpr (Func n a) = do 
   cx <- getCX
   ll <- lift2 $ doLookup n cx
-  case ll of 
+  trace (show ll) $ case ll of 
     Just (TwineFunction f) -> do 
       args <- mapM evalExpr a
       lift2 $ f args
@@ -151,7 +153,12 @@ evalExpr (Var n) = do g <- getCX
                         Nothing-> return TwineNull
 
 evalExpr (NumberLiteral n) = return . bind $ n
-evalExpr (StringLiteral n) = return . bind $ n
+evalExpr (StringLiteral n) = do
+  g  <- get
+  cx <- getCX
+  let tmpl = loadTemplateFromString (C.unpack n)
+  nn <- lift2 $ runEval' tmpl cx (getContextMacros g)
+  return . bind $ nn
 
 evalExpr (Accessor (Var "macros") expr) = runMacro expr
 
@@ -220,10 +227,11 @@ doLookup k v = let parts = C.split '.' k
                in aux parts v
     where 
       aux [] t = return (Just t)
-      aux (x:xs) t = do ll <- doLookup' x t
-                        case ll of
-                          Just a  -> aux xs a
-                          Nothing -> return Nothing
+      aux (x:xs) t = do 
+        ll <- doLookup' x t
+        case ll of
+          Just a  -> aux xs a
+          Nothing -> return Nothing
 
 doLookup' _ (TwineObjectList []) = return Nothing
 doLookup' st (TwineObjectList (x:xs)) = do
