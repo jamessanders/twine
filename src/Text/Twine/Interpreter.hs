@@ -4,6 +4,7 @@ module Text.Twine.Interpreter (runEval,getMacros) where
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Applicative
 import Data.ByteString.Char8 (ByteString,pack,unpack)
 import Debug.Trace
 import Text.Twine.Interpreter.Builtins
@@ -101,27 +102,29 @@ eval (Cond e bls) = do
 
 eval (Loop e as bls) = do
   ee <- evalExpr e
-  case ee of 
+  s <- lift2 $ makeString ee
+  trace (show s) $ case ee of 
     TwineNull -> return (C.pack "")
     a -> runLoop a
   where  
     --runLoop :: (Monad m) => TwineElement m -> m C.ByteString
-    runLoop (TwineList ls) = fmap (C.concat) $ mapM inner ls  
+    runLoop (TwineList ls) = C.concat <$> mapM inner ls  
                                                               
     runLoop (TwineObjectList x) = do                          
       it <- lift2 $ getIterable (head x)                      
       runLoop (TwineList it)                                  
                                                               
-    runLoop (TwineObject x) = do                              
+    runLoop (TwineObject x) = do
       it <- lift2 $ getIterable x                             
-      runLoop (TwineList it)                                  
+      trace (show it) $ runLoop (TwineList it)                                  
                                                               
     runLoop x = error $ "Not iterable: " ++ show x            
     
     inner v = do 
       g  <- get
       cx <- getCX                                  
-      lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx) (getContextMacros g)
+      s <- lift2 $ makeString v
+      trace (show as) $ trace s $ lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx) (getContextMacros g)
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 

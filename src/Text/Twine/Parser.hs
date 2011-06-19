@@ -14,22 +14,26 @@ token t = do
   spaces
   return t
 
-template  =  try altMacro <|> templateEntities <|> textBlock
+template  = do 
+  --pos <- getPosition
+  --trace (show pos) $
+    try altMacro <|> templateEntities <|> textBlock
+--template  =  try altMacro <|> templateEntities <|> textBlock
 template'  =  templateEntities <|> textBlock
 
 templateEntities = try slot <|> try conditional <|> try macro <|> try loop <|> try assign <|> include <?> "Template entity"
 
 startOfEntities = try (string "{{") 
-                  <|> try (string "{@")
+                  <|> try (string "{%")
                   <|> try (string "{|")
                   <|> try (string "{+")
                   <|> try (string "{?")
-                  <|> try (string "@")
+                  <|> try (string "\n@")
                   <|> try (string "{=")
                   <?> "start of entity"
 
 endOfEntities = try (string "}}") 
-                <|> try (string "@}")
+                <|> try (string "%}")
                 <|> try (string "|}")
                 <|> try (string "+}")
                 <|> try (string "?}")
@@ -76,7 +80,7 @@ slot = do
   return (Slot expr)
 
 loop = do
-  token "{@"
+  token "{%"
   token "|" <?> "start of loop expression"
   ident <- name
   spaces
@@ -84,7 +88,7 @@ loop = do
   from <- expression
   spaces
   char '|' <?> "end of loop expression"
-  blocks <- manyTill template (string "@}")
+  blocks <- manyTill template (string "%}")
   return (Loop (from) ident blocks)
 
 conditional = do

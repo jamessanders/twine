@@ -81,14 +81,17 @@ instance (Monad m) => Convertible Int (TwineElement m) where
 instance (Monad m) => Convertible Integer (TwineElement m) where
   safeConvert = Right . bind . CXInteger
 
-instance (Monad m) => Convertible (TwineElement m) (TwineElement m) where
-  safeConvert = Right 
+-- instance (Monad m) => Convertible (TwineElement m) (TwineElement m) where
+--   safeConvert = Right 
 
 instance (Monad m) => TemplateInterface m [(ByteString,TwineElement m)] where
   property k = return . bind . lookup k
 
 instance (Monad m) => TemplateInterface m (M.Map ByteString (TwineElement m)) where
   property k = return . bind . M.lookup k
+
+instance (Monad m) => TemplateInterface m ByteString where
+  makeString = return . C.unpack
 
 ------------------------------------------------------------------------
 instance (Monad m) => TemplateInterface m Int
