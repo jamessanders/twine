@@ -15,8 +15,8 @@ token t = do
   return t
 
 template  = do 
-  pos <- getPosition
-  trace (show pos) $
+  --pos <- getPosition
+  --trace (show pos) $
     try altMacro <|> templateEntities <|> textBlock
 ---template  =  try altMacro <|> templateEntities <|> textBlock
 template'  =  templateEntities <|> textBlock

@@ -119,7 +119,7 @@ eval (Loop e as bls) = do
                                                               
     runLoop (TwineObject x) = do
       it <- lift2 $ getIterable x                             
-      trace (show it) $ runLoop (TwineList it)                                  
+      runLoop (TwineList it)                                  
                                                               
     runLoop x = error $ "Not iterable: " ++ show x            
     
@@ -127,7 +127,7 @@ eval (Loop e as bls) = do
       g  <- get
       cx <- getCX                                  
       s <- lift2 $ makeString v
-      trace (show as) $ trace s $ lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx) (getContextMacros g)
+      lift2 $ runEval' bls (bind (M.fromList [(as,v)]) <+> cx) (getContextMacros g)
 
 eval x = error $ "Cannot eval: '" ++ (show x) ++ "'"
 
@@ -139,7 +139,7 @@ evalExpr :: (Monad m, Functor m) => Expr -> Stack m (TwineElement m)
 evalExpr (Func n a) = do 
   cx <- getCX
   ll <- lift2 $ doLookup n cx
-  trace (show ll) $ case ll of 
+  case ll of 
     Just (TwineFunction f) -> do 
       args <- mapM evalExpr a
       lift2 $ f args
